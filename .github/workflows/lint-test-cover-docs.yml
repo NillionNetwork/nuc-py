@@ -22,6 +22,7 @@ jobs:
 
       - name: Ensure code is formatted.
         run: |
+          uv sync --extra lint
           uv run ruff format --check
 
       - name: Lint and test module.

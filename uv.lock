@@ -647,6 +647,8 @@ docs = [
 ]
 lint = [
     { name = "pylint" },
+    { name = "pyright" },
+    { name = "ruff" },
 ]
 publish = [
     { name = "build" },
@@ -657,31 +659,21 @@ test = [
     { name = "pytest-cov" },
 ]
 
-[package.dev-dependencies]
-dev = [
-    { name = "pyright" },
-    { name = "ruff" },
-]
-
 [package.metadata]
 requires-dist = [
     { name = "build", marker = "extra == 'publish'", specifier = "~=0.10" },
     { name = "coveralls", marker = "extra == 'coveralls'", specifier = "~=4.0" },
     { name = "pylint", marker = "extra == 'lint'", specifier = "~=3.2.0" },
+    { name = "pyright", marker = "extra == 'lint'", specifier = "==1.1.396" },
     { name = "pytest", marker = "extra == 'test'", specifier = "~=8.2" },
     { name = "pytest-cov", marker = "extra == 'test'", specifier = "~=5.0" },
+    { name = "ruff", marker = "extra == 'lint'", specifier = "==0.7.0" },
     { name = "sphinx", marker = "extra == 'docs'", specifier = "~=5.0" },
     { name = "sphinx-rtd-theme", marker = "extra == 'docs'", specifier = "~=2.0.0" },
     { name = "toml", marker = "extra == 'docs'", specifier = "~=0.10.2" },
     { name = "twine", marker = "extra == 'publish'", specifier = "~=4.0" },
 ]
 provides-extras = ["docs", "test", "lint", "coveralls", "publish"]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pyright", specifier = "==1.1.396" },
-    { name = "ruff", specifier = "==0.7.0" },
-]
 
 [[package]]
 name = "packaging"
