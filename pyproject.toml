@@ -11,8 +11,14 @@ requires-python = ">=3.9"
 
 [project.urls]
 Repository = "https://github.com/nillionnetwork/nuc-py"
+Documentation = "https://nuc.readthedocs.io"
 
 [project.optional-dependencies]
+docs = [
+    "toml~=0.10.2",
+    "sphinx~=5.0",
+    "sphinx-rtd-theme~=2.0.0"
+]
 test = [
     "pytest~=8.2",
     "pytest-cov~=5.0"
