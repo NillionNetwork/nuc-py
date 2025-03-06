@@ -4,7 +4,7 @@ nuc
 
 Data structures and functionalities for the Nillion Network user identity and authorization framework.
 
-|pypi| |readthedocs|
+|pypi| |readthedocs| |actions| |coveralls|
 
 .. |pypi| image:: https://badge.fury.io/py/nuc.svg#
    :target: https://badge.fury.io/py/nuc
@@ -13,6 +13,14 @@ Data structures and functionalities for the Nillion Network user identity and au
 .. |readthedocs| image:: https://readthedocs.org/projects/nuc/badge/?version=latest
    :target: https://nuc.readthedocs.io/en/latest/?badge=latest
    :alt: Read the Docs documentation status.
+
+.. |actions| image:: https://github.com/nillionnetwork/nuc-py/workflows/lint-test-cover-docs/badge.svg#
+   :target: https://github.com/nillionnetwork/nuc-py/actions/workflows/lint-test-cover-docs.yml
+   :alt: GitHub Actions status.
+
+.. |coveralls| image:: https://coveralls.io/repos/github/NillionNetwork/nuc-py/badge.svg?branch=main
+   :target: https://coveralls.io/github/NillionNetwork/nuc-py?branch=main
+   :alt: Coveralls test coverage summary.
 
 Installation and Usage
 ----------------------

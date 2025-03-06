@@ -26,6 +26,9 @@ test = [
 lint = [
     "pylint~=3.2.0"
 ]
+coveralls = [
+    "coveralls~=4.0"
+]
 publish = [
     "build~=0.10",
     "twine~=4.0"
