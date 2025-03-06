@@ -1,0 +1,35 @@
+[project]
+name = "nuc"
+version = "0.0.0a0"
+description = """\
+    Data structures and functionalities for the Nillion \
+    Network user identity and authorization framework.\
+    """
+license = {text = "MIT"}
+readme = "README.rst"
+requires-python = ">=3.9"
+
+[project.urls]
+Repository = "https://github.com/nillionnetwork/nuc-py"
+
+[project.optional-dependencies]
+test = [
+    "pytest~=8.2",
+    "pytest-cov~=5.0"
+]
+lint = [
+    "pylint~=3.2.0"
+]
+publish = [
+    "build~=0.10",
+    "twine~=4.0"
+]
+
+[build-system]
+requires = [
+    "setuptools>=68.0"
+]
+build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+addopts = "--doctest-modules --ignore=docs --cov=nuc --cov-report term-missing"
