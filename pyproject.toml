@@ -40,5 +40,14 @@ requires = [
 ]
 build-backend = "setuptools.build_meta"
 
+[tool.ruff]
+exclude = [".venv"]
+
 [tool.pytest.ini_options]
 addopts = "--doctest-modules --ignore=docs --cov=nuc --cov-report term-missing"
+
+[tool.uv]
+dev-dependencies = [
+  "ruff==0.7.0", 
+  "pyright==1.1.396",
+]
