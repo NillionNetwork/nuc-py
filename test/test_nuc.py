@@ -4,7 +4,6 @@ Test suite containing functional unit tests of exported functions.
 
 from unittest import TestCase
 from importlib import import_module
-import pytest
 
 import nuc
 
