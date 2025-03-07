@@ -8,6 +8,9 @@ description = """\
 license = {text = "MIT"}
 readme = "README.rst"
 requires-python = ">=3.9"
+dependencies = [
+    "secp256k1==0.14.0",
+]
 
 [project.urls]
 Repository = "https://github.com/nillionnetwork/nuc-py"
