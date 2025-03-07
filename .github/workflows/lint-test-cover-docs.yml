@@ -13,25 +13,35 @@ jobs:
     name: Python ${{ matrix.python-version }}
     steps:
       - uses: actions/checkout@v4
-      - name: Install Python.
-        uses: actions/setup-python@v5
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
         with:
+          version: "0.6.0"
           python-version: ${{ matrix.python-version }}
-          architecture: x64
+
+      - name: Ensure code is formatted.
+        run: |
+          uv sync --extra lint
+          uv run ruff format --check
+
       - name: Lint and test module.
         run: |
-          pip install -U .[lint,test]
-          python -m pylint nuc test/test_nuc.py # Check against linting rules.
-          python -m pytest # Run tests.
+          uv sync --extra test --extra lint
+          uv run pylint nuc test/test_nuc.py # Check against linting rules.
+          uv run pyright # Run type checks.
+          uv run pytest # Run tests.
+
       - name: Publish coverage results.
         run: |
-          pip install -U .[coveralls]
-          python -m coveralls --service=github # Submit to coveralls.
+          uv sync --extra coveralls
+          uv run coveralls --service=github # Submit to coveralls.
         if: matrix.python-version == '3.11'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
+
       - name: Test auto-generation of documentation.
         run: |
-          pip install -U .[docs]
-          cd docs && sphinx-apidoc -f -E --templatedir=_templates -o _source .. && make html && cd ..
+          uv sync --extra docs
+          cd docs && uv run sphinx-apidoc -f -E --templatedir=_templates -o _source .. && uv run make html && cd ..
