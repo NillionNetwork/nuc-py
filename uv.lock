@@ -656,6 +656,7 @@ name = "nuc"
 version = "0.0.0a0"
 source = { editable = "." }
 dependencies = [
+    { name = "requests" },
     { name = "secp256k1" },
 ]
 
@@ -690,6 +691,7 @@ requires-dist = [
     { name = "pyright", marker = "extra == 'lint'", specifier = "==1.1.396" },
     { name = "pytest", marker = "extra == 'test'", specifier = "~=8.2" },
     { name = "pytest-cov", marker = "extra == 'test'", specifier = "~=5.0" },
+    { name = "requests", specifier = "==2.32.3" },
     { name = "ruff", marker = "extra == 'lint'", specifier = "==0.7.0" },
     { name = "secp256k1", specifier = "==0.14.0" },
     { name = "sphinx", marker = "extra == 'docs'", specifier = "~=5.0" },
