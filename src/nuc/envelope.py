@@ -3,6 +3,7 @@ NUC envelope.
 """
 
 import base64
+from hashlib import sha256
 import json
 from dataclasses import dataclass
 from typing import List
@@ -33,7 +34,7 @@ class DecodedNucToken:
         if len(parts) != 3:
             raise MalformedNucJwtException("invalid JWT structure")
         (raw_header, raw_payload, signature) = parts
-        header = _base64_decode(raw_header)
+        header = urlsafe_base64_decode(raw_header)
         try:
             header = json.loads(header)
         except Exception as ex:
@@ -47,12 +48,15 @@ class DecodedNucToken:
         if len(header) != 1:
             raise MalformedNucJwtException("unexpected keys in header")
 
-        payload = _base64_decode(raw_payload)
+        payload = urlsafe_base64_decode(raw_payload)
         token = NucToken.parse(payload)
 
-        signature = _base64_decode(signature)
+        signature = urlsafe_base64_decode(signature)
 
         return DecodedNucToken(raw_header, raw_payload, signature, token)
+
+    def __str__(self) -> str:
+        return f"{self.raw_header}.{self.raw_payload}.{urlsafe_base64_encode(self.signature)}"
 
     def validate_signature(self):
         """
@@ -65,6 +69,13 @@ class DecodedNucToken:
         if not public_key.ecdsa_verify(payload, signature):
             raise InvalidSignatureException("signature verification failed")
 
+    def compute_hash(self) -> bytes:
+        """
+        Compute the hash for this token.
+        """
+        hash_input = str(self).encode("utf8")
+        return sha256(hash_input).digest()
+
 
 class NucTokenEnvelope:
     """
@@ -72,8 +83,8 @@ class NucTokenEnvelope:
     """
 
     def __init__(self, token: DecodedNucToken, proofs: List[DecodedNucToken]) -> None:
-        self._token = token
-        self._proofs = proofs
+        self.token = token
+        self.proofs = proofs
 
     @staticmethod
     def parse(data: str) -> "NucTokenEnvelope":
@@ -96,22 +107,8 @@ class NucTokenEnvelope:
         Validate the signature in this envelope.
         """
 
-        for token in [self._token, *self._proofs]:
+        for token in [self.token, *self.proofs]:
             token.validate_signature()
-
-    def token(self) -> NucToken:
-        """
-        Get the token in this envelope.
-        """
-
-        return self._token.token
-
-    def proofs(self) -> List[NucToken]:
-        """
-        Get the proofs in this envelope.
-        """
-
-        return [proof.token for proof in self._proofs]
 
 
 class MalformedNucJwtException(Exception):
@@ -126,7 +123,11 @@ class InvalidSignatureException(Exception):
     """
 
 
-def _base64_decode(data: str) -> bytes:
+def urlsafe_base64_decode(data: str) -> bytes:
+    """
+    Encode an input as URL safe base64.
+    """
+
     # python's urlsafe decoding actually needs `=` which shouldn't actually be there so we append them as necessary
     padding = 4 - (len(data) % 4)
     data = data + ("=" * padding)
@@ -134,3 +135,13 @@ def _base64_decode(data: str) -> bytes:
         return base64.urlsafe_b64decode(data)
     except Exception as ex:
         raise MalformedNucJwtException("invalid base64") from ex
+
+
+def urlsafe_base64_encode(data: bytes) -> str:
+    """
+    Encode URL safe base64.
+    """
+
+    # same as above but for encoding
+    encoded = base64.urlsafe_b64encode(data)
+    return encoded.rstrip(b"=").decode("utf8")
