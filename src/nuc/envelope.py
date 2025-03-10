@@ -127,6 +127,7 @@ class InvalidSignatureException(Exception):
 
 
 def _base64_decode(data: str) -> bytes:
+    # python's urlsafe decoding actually needs `=` which shouldn't actually be there so we append them as necessary
     padding = 4 - (len(data) % 4)
     data = data + ("=" * padding)
     try:
