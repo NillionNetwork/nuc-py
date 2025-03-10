@@ -117,7 +117,7 @@ class NucToken:
     proofs: List[bytes]
 
     @staticmethod
-    def parse(raw_json: str) -> "NucToken":
+    def parse(raw_json: str | bytes) -> "NucToken":
         """
         Parse a NUC token from a string.
         """
