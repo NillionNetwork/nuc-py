@@ -10,7 +10,7 @@ from typing import Any, Dict, List
 
 from .policy import Policy
 
-_DID_PATTERN = re.compile("did:([a-zA-Z0-9_-]+):([a-zA-Z0-9]{66})")
+_DID_PATTERN = re.compile("did:nil:([a-zA-Z0-9]{66})")
 _HEX_PATTERN = re.compile("[a-zA-Z0-9]+")
 
 
@@ -20,7 +20,6 @@ class Did:
     A class representing a Decentralized Identifier (DID).
     """
 
-    method: str
     public_key: bytes
 
     @staticmethod
@@ -29,7 +28,7 @@ class Did:
         Construct a new DID for the "nil" method.
         """
 
-        return Did("nil", public_key)
+        return Did(public_key)
 
     @staticmethod
     def parse(data: str) -> "Did":
@@ -40,15 +39,15 @@ class Did:
         if not matches:
             raise MalformedDidException("invalid DID")
 
-        (method, public_key) = matches[0]
+        public_key = matches[0]
         try:
             public_key = bytes.fromhex(public_key)
         except Exception as ex:
             raise MalformedDidException("invalid hex public key") from ex
-        return Did(method, public_key)
+        return Did(public_key)
 
     def __str__(self) -> str:
-        return f"did:{self.method}:{self.public_key.hex()}"
+        return f"did:nil:{self.public_key.hex()}"
 
 
 @dataclass

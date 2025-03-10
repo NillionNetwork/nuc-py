@@ -44,9 +44,8 @@ class TestCommand:
 class TestDid:
     def test_parse_valid(self):
         did = Did.parse(
-            "did:test:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            "did:nil:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
         )
-        assert did.method == "test"
         assert (
             did.public_key
             == b"\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa"
@@ -54,7 +53,13 @@ class TestDid:
 
     @pytest.mark.parametrize(
         "input",
-        ["foo:bar:aa", "did:bar", "did:bar:aa:", "did:bar:lol"],
+        [
+            "foo:bar:aa",
+            "did:bar",
+            "did:bar:aa:",
+            "did:bar:lol",
+            "did:test:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        ],
     )
     def test_parse_invalid(self, input: str):
         with pytest.raises(MalformedDidException):
