@@ -8,8 +8,6 @@ import json
 import requests
 from secp256k1 import PrivateKey
 
-from nuc.envelope import NucTokenEnvelope
-
 
 DEFAULT_REQUEST_TIMEOUT: float = 10
 
@@ -32,7 +30,7 @@ class AuthorityService:
         self._base_url = base_url
         self._timeout_seconds = timeout_seconds
 
-    def request_token(self, key: PrivateKey) -> NucTokenEnvelope:
+    def request_token(self, key: PrivateKey) -> str:
         """
         Request a token, issued to the public key tied to the given private key.
         """
@@ -55,7 +53,7 @@ class AuthorityService:
         )
         response.raise_for_status()
         response = response.json()
-        return NucTokenEnvelope.parse(response["token"])
+        return response["token"]
 
     def about(self) -> AuthorityServiceAbout:
         """
