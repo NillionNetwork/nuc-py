@@ -3,7 +3,6 @@ from secp256k1 import PrivateKey, PublicKey
 
 from nuc.builder import NucTokenBuilder
 from nuc.authority import AuthorityService
-from nuc.envelope import NucTokenEnvelope
 from nuc.policy import Policy
 from nuc.token import Command, DelegationBody, Did
 
@@ -25,8 +24,8 @@ class TestAuthorityService:
         mock_post.return_value.json.return_value = {"token": response_token}
 
         key = PrivateKey()
-        envelope = service.request_token(key)
-        assert envelope.token == NucTokenEnvelope.parse(response_token).token
+        token = service.request_token(key)
+        assert token == response_token
 
         invocation = mock_post.call_args_list[0]
         assert invocation.args == (f"{base_url}/api/v1/nucs/create",)
