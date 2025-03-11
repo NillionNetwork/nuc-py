@@ -28,7 +28,7 @@ jobs:
       - name: Lint and test module.
         run: |
           uv sync --extra test --extra lint
-          uv run pylint nuc test/test_nuc.py # Check against linting rules.
+          uv run pylint nuc # Check against linting rules.
           uv run pyright # Run type checks.
           uv run pytest # Run tests.
 
