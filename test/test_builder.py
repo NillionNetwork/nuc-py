@@ -5,14 +5,14 @@ from secp256k1 import PrivateKey
 from nuc.builder import NucTokenBuilder
 from nuc.envelope import NucTokenEnvelope, urlsafe_base64_decode
 from nuc.policy import Policy
-from nuc.token import Command, DelegationBody, Did, InvocationBody, NucToken
+from nuc.token import Command, DelegationBody, Did, NucToken
 
 
 class TestNucTokenBuilder:
     def test_extend(self):
         key = PrivateKey()
         base = (
-            NucTokenBuilder.delegation(DelegationBody([Policy.equals(".foo", 42)]))
+            NucTokenBuilder.delegation([Policy.equals(".foo", 42)])
             .audience(Did(bytes([0xBB] * 33)))
             .subject(Did(bytes([0xCC] * 33)))
             .command(Command(["nil", "db", "read"]))
@@ -35,7 +35,7 @@ class TestNucTokenBuilder:
     def test_encode_decode(self):
         key = PrivateKey()
         token = (
-            NucTokenBuilder.delegation(DelegationBody([]))
+            NucTokenBuilder.delegation([])
             .audience(Did(bytes([0xBB] * 33)))
             .subject(Did(bytes([0xCC] * 33)))
             .command(Command(["nil", "db", "read"]))
@@ -71,7 +71,7 @@ class TestNucTokenBuilder:
         # Build a root NUC
         root_key = PrivateKey()
         root = (
-            NucTokenBuilder.delegation(DelegationBody([Policy.equals(".foo", 42)]))
+            NucTokenBuilder.delegation([Policy.equals(".foo", 42)])
             .audience(Did(bytes([0xBB] * 33)))
             .subject(Did(bytes([0xCC] * 33)))
             .command(Command(["nil", "db", "read"]))
@@ -83,7 +83,7 @@ class TestNucTokenBuilder:
         # Build a delegation using the above proof
         other_key = PrivateKey()
         delegation = (
-            NucTokenBuilder.delegation(DelegationBody([Policy.equals(".foo", 42)]))
+            NucTokenBuilder.delegation([Policy.equals(".foo", 42)])
             .audience(Did(bytes([0xBB] * 33)))
             .subject(Did(bytes([0xCC] * 33)))
             .command(Command(["nil", "db", "read"]))
@@ -101,7 +101,7 @@ class TestNucTokenBuilder:
         # Build an invocation using the above proof
         yet_another_key = PrivateKey()
         invocation = (
-            NucTokenBuilder.invocation(InvocationBody({"beep": 42}))
+            NucTokenBuilder.invocation({"beep": 42})
             .audience(Did(bytes([0xBB] * 33)))
             .subject(Did(bytes([0xCC] * 33)))
             .command(Command(["nil", "db", "read"]))

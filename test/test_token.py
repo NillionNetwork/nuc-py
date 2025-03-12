@@ -40,6 +40,24 @@ class TestCommand:
         with pytest.raises(MalformedCommandException):
             Command.parse(input)
 
+    @pytest.mark.parametrize(
+        "left,right,expected",
+        [
+            ([], [], True),
+            (["nil"], [], True),
+            (["nil"], ["nil"], True),
+            (["nil", "bar"], ["nil"], True),
+            (["nil"], ["nil", "bar"], False),
+            (["nil", "bar"], ["nil", "foo"], False),
+            (["nil", "bar", "a"], ["nil", "bar", "b"], False),
+            (["nil"], ["bar"], False),
+        ],
+    )
+    def test_is_attenuation(self, left: List[str], right: List[str], expected: bool):
+        left_cmd = Command(left)
+        right_cmd = Command(right)
+        assert left_cmd.is_attenuation_of(right_cmd) == expected
+
 
 class TestDid:
     def test_parse_valid(self):
