@@ -47,7 +47,7 @@ class OperatorPolicy:
     @staticmethod
     def parse(operator: str, data: Any) -> "OperatorPolicy":
         """
-        Parse a policy.
+        Parse an operator policy.
         """
 
         keys = _ensure_list(data)
@@ -141,6 +141,21 @@ class Policy:
     def parse(data: Any) -> "Policy":
         """
         Parse a policy.
+
+        Arguments
+        ---------
+
+        data
+            The raw policy to be parsed.
+
+        Example
+        -------
+
+        .. code-block:: py3
+
+            from nuc.policy import Policy
+
+            policy = Policy.parse(["eq", ".foo", 42])
         """
 
         keys = _ensure_list(data)
@@ -177,6 +192,25 @@ class Policy:
     def matches(self, value: Any) -> bool:
         """
         Checks whether this policy matches a value.
+
+        Arguments
+        ---------
+
+        value
+            The value to be matched.
+
+        Example
+        -------
+
+        .. code-block:: py3
+
+            from nuc.policy import Policy
+
+            # Parse a policy
+            policy = Policy.parse(["eq", ".foo", 42])
+
+            # Ensure it matches a given value.
+            assert policy.matches({ "foo": 42 })
         """
 
         match self.body:
@@ -195,6 +229,25 @@ class Policy:
     def equals(selector: str, value: Any) -> "Policy":
         """
         Create a policy that expects a selected value to equal another.
+
+        Arguments
+        ---------
+
+        selector
+            A jq-like selector.
+        value
+            The value that the value pointed to by the selector should match.
+
+        Example
+        -------
+
+        .. code-block:: py3
+
+            from nuc.policy import Policy
+
+            policy = Policy.equals(".foo", 42)
+            assert policy.matches({ "foo": 42 })
+
         """
 
         return Policy(OperatorPolicy(Selector.parse(selector), EqualsOperator(value)))
@@ -203,6 +256,24 @@ class Policy:
     def not_equals(selector: str, value: Any) -> "Policy":
         """
         Create a policy that expects a selected value to be distinct from another.
+
+        Arguments
+        ---------
+
+        selector
+            A jq-like selector.
+        value
+            The value that the value pointed to by the selector should not match.
+
+        Example
+        -------
+
+        .. code-block:: py3
+
+            from nuc.policy import Policy
+
+            policy = Policy.not_equals(".foo", 42)
+            assert policy.matches({ "foo": 1337 })
         """
 
         return Policy(
@@ -213,6 +284,25 @@ class Policy:
     def any_of(selector: str, values: List[Any]) -> "Policy":
         """
         Create a policy that expects a selected value to match an element from a list.
+
+        Arguments
+        ---------
+
+        selector
+            A jq-like selector.
+        values
+            The values to be checked.
+
+        Example
+        -------
+
+        .. code-block:: py3
+
+            from nuc.policy import Policy
+
+            policy = Policy.any_of(".foo", [42, 1337])
+            assert policy.matches({ "foo": 42 })
+            assert policy.matches({ "foo": 1337 })
         """
 
         return Policy(OperatorPolicy(Selector.parse(selector), AnyOfOperator(values)))
@@ -221,6 +311,25 @@ class Policy:
     def and_(policies: List["Policy"]) -> "Policy":
         """
         Create a policy that expects all sub-policies to be valid.
+
+        Arguments
+        ---------
+
+        policies
+            The policies that must be valid.
+
+        Example
+        -------
+
+        .. code-block:: py3
+
+            from nuc.policy import Policy
+
+            policy = Policy.and_([
+                Policy.equals(".foo", 42),
+                Policy.equals(".bar", 1337)
+            ])
+            assert policy.matches({ "foo": 42, "bar": 1337 })
         """
 
         return Policy(AndConnector(policies))
@@ -229,6 +338,25 @@ class Policy:
     def or_(policies: List["Policy"]) -> "Policy":
         """
         Create a policy that expects at least one sub-policy to be valid.
+
+        Arguments
+        ---------
+
+        policies
+            The policies to be checked.
+
+        Example
+        -------
+
+        .. code-block:: py3
+
+            from nuc.policy import Policy
+
+            policy = Policy.or_([
+                Policy.equals(".foo", 42),
+                Policy.equals(".bar", 1337)
+            ])
+            assert policy.matches({ "foo": 42, "bar": 100 })
         """
 
         return Policy(OrConnector(policies))
@@ -237,6 +365,22 @@ class Policy:
     def not_(policy: "Policy") -> "Policy":
         """
         Create a policy that expects a policy to be invalid.
+
+        Arguments
+        ---------
+
+        policy
+            The policy to be checked.
+
+        Example
+        -------
+
+        .. code-block:: py3
+
+            from nuc.policy import Policy
+
+            policy = Policy.not_(Policy.equals(".foo", 42))
+            assert policy.matches({ "foo": 1337 })
         """
 
         return Policy(NotConnector(policy))

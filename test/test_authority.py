@@ -2,7 +2,7 @@ from unittest.mock import patch
 from secp256k1 import PrivateKey, PublicKey
 
 from nuc.builder import NucTokenBuilder
-from nuc.authority import AuthorityService
+from nuc.authority import AuthorityServiceClient
 from nuc.policy import Policy
 from nuc.token import Command, Did
 
@@ -11,7 +11,7 @@ class TestAuthorityService:
     @patch("requests.post")
     def test_request_token(self, mock_post):
         base_url = "http://127.0.0.1"
-        service = AuthorityService(base_url)
+        service = AuthorityServiceClient(base_url)
         root_key = PrivateKey()
 
         response_token = (

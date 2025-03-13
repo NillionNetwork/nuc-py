@@ -19,8 +19,9 @@ Documentation = "https://nuc.readthedocs.io"
 
 [project.optional-dependencies]
 docs = [
+    "myst-parser==2.0.0",
     "toml~=0.10.2",
-    "sphinx~=5.0",
+    "sphinx~=7.1",
     "sphinx-rtd-theme~=2.0.0"
 ]
 test = [

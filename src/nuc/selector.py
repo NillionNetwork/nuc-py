@@ -21,6 +21,21 @@ class Selector:
     def parse(selector: str) -> "Selector":
         """
         Parse a selector from a string.
+
+        Arguments
+        ---------
+
+        selector
+            The selector to be parsed.
+
+        Example
+        -------
+
+        .. code-block:: py3
+
+            from nuc.selector import Selector
+
+            selector = Selector.parse(".foo.bar")
         """
 
         if not selector.startswith("."):
@@ -42,6 +57,12 @@ class Selector:
     def apply(self, value: Dict[str, Any]) -> Any:
         """
         Apply a selector on a value and return the matched value, if any.
+
+        Arguments
+        ---------
+
+        value
+            The dict that this selector should be applied to.
         """
 
         output = value
