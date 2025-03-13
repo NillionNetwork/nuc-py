@@ -5,11 +5,13 @@ NUC builder.
 import secrets
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any, Dict, List
+from typing_extensions import Self
 
 from secp256k1 import PrivateKey
 
 from nuc.envelope import NucTokenEnvelope, urlsafe_base64_encode
+from nuc.policy import Policy
 from nuc.token import Command, DelegationBody, Did, InvocationBody, NucToken
 
 _DEFAULT_NONCE_LENGTH: int = 16
@@ -45,20 +47,20 @@ class NucTokenBuilder:
         self._proof = proof
 
     @staticmethod
-    def delegation(body: DelegationBody) -> "NucTokenBuilder":
+    def delegation(policies: List[Policy]) -> "NucTokenBuilder":
         """
         Create a new token builder for a delegation.
         """
 
-        return NucTokenBuilder(body=body)
+        return NucTokenBuilder(body=DelegationBody(policies))
 
     @staticmethod
-    def invocation(body: InvocationBody) -> "NucTokenBuilder":
+    def invocation(args: Dict[str, Any]) -> "NucTokenBuilder":
         """
         Create a new token builder for an invocation.
         """
 
-        return NucTokenBuilder(body=body)
+        return NucTokenBuilder(body=InvocationBody(args))
 
     @staticmethod
     def extending(envelope: NucTokenEnvelope) -> "NucTokenBuilder":
@@ -76,7 +78,7 @@ class NucTokenBuilder:
             subject=token.subject,
         )
 
-    def audience(self, audience: Did) -> "NucTokenBuilder":
+    def audience(self, audience: Did) -> Self:
         """
         Set the audience for the token to be built.
         """
@@ -84,7 +86,7 @@ class NucTokenBuilder:
         self._audience = audience
         return self
 
-    def subject(self, subject: Did) -> "NucTokenBuilder":
+    def subject(self, subject: Did) -> Self:
         """
         Set the subject for the token to be built.
         """
@@ -92,7 +94,7 @@ class NucTokenBuilder:
         self._subject = subject
         return self
 
-    def not_before(self, not_before: datetime) -> "NucTokenBuilder":
+    def not_before(self, not_before: datetime) -> Self:
         """
         Set the `not before` date for the token to be built.
         """
@@ -100,7 +102,7 @@ class NucTokenBuilder:
         self._not_before = not_before
         return self
 
-    def expires_at(self, expires_at: datetime) -> "NucTokenBuilder":
+    def expires_at(self, expires_at: datetime) -> Self:
         """
         Set the `expires at` date for the token to be built.
         """
@@ -108,7 +110,7 @@ class NucTokenBuilder:
         self._expires_at = expires_at
         return self
 
-    def command(self, command: Command) -> "NucTokenBuilder":
+    def command(self, command: Command) -> Self:
         """
         Set the command for the token to be built.
         """
@@ -116,7 +118,7 @@ class NucTokenBuilder:
         self._command = command
         return self
 
-    def meta(self, meta: Dict[str, Any]) -> "NucTokenBuilder":
+    def meta(self, meta: Dict[str, Any]) -> Self:
         """
         Set the metadata for the token to be built.
         """
@@ -124,7 +126,7 @@ class NucTokenBuilder:
         self._meta = meta
         return self
 
-    def nonce(self, nonce: bytes) -> "NucTokenBuilder":
+    def nonce(self, nonce: bytes) -> Self:
         """
         Set the nonce for the token to be built.
         """
@@ -132,7 +134,7 @@ class NucTokenBuilder:
         self._nonce = nonce
         return self
 
-    def proof(self, proof: NucTokenEnvelope) -> "NucTokenBuilder":
+    def proof(self, proof: NucTokenEnvelope) -> Self:
         """
         Set the proof for the token to be built.
         """
@@ -179,7 +181,7 @@ class NucTokenBuilder:
         token = f"{token}.{urlsafe_base64_encode(signature)}"
         if self._proof:
             all_proofs = [self._proof.token] + self._proof.proofs
-            proofs = "/".join([str(proof) for proof in all_proofs])
+            proofs = "/".join([proof.serialize() for proof in all_proofs])
             token = f"{token}/{proofs}"
         return token
 

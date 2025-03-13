@@ -55,7 +55,10 @@ class DecodedNucToken:
 
         return DecodedNucToken(raw_header, raw_payload, signature, token)
 
-    def __str__(self) -> str:
+    def serialize(self) -> str:
+        """
+        Serialize this token as a JWT.
+        """
         return f"{self.raw_header}.{self.raw_payload}.{urlsafe_base64_encode(self.signature)}"
 
     def validate_signature(self):
@@ -73,7 +76,7 @@ class DecodedNucToken:
         """
         Compute the hash for this token.
         """
-        hash_input = str(self).encode("utf8")
+        hash_input = self.serialize().encode("utf8")
         return sha256(hash_input).digest()
 
 
@@ -109,6 +112,16 @@ class NucTokenEnvelope:
 
         for token in [self.token, *self.proofs]:
             token.validate_signature()
+
+    def serialize(self) -> str:
+        """
+        Serialize this envelope as a JWT-like string.
+        """
+        token = self.token.serialize()
+        if not self.proofs:
+            return token
+        proofs = "/".join(proof.serialize() for proof in self.proofs)
+        return f"{token}/{proofs}"
 
 
 class MalformedNucJwtException(Exception):

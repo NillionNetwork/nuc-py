@@ -14,7 +14,7 @@ _DID_PATTERN = re.compile("did:nil:([a-zA-Z0-9]{66})")
 _HEX_PATTERN = re.compile("[a-zA-Z0-9]+")
 
 
-@dataclass
+@dataclass(frozen=True)
 class Did:
     """
     A class representing a Decentralized Identifier (DID).
@@ -75,6 +75,16 @@ class Command:
                 raise MalformedCommandException("empty segment")
             segments.append(segment)
         return Command(segments)
+
+    def is_attenuation_of(self, other: "Command") -> bool:
+        """
+        Check if this command is an attenuation of another one.
+        """
+
+        if len(self.segments) < len(other.segments):
+            return False
+        our_segments = self.segments[: len(other.segments)]
+        return other.segments == our_segments
 
     def __str__(self) -> str:
         return "/" + "/".join(self.segments)
@@ -167,13 +177,17 @@ class NucToken:
             proofs,
         )
 
-    def __str__(self) -> str:
+    def to_json(self) -> Dict[str, Any]:
+        """
+        Convert this token into JSON.
+        """
+
         match self.body:
             case InvocationBody(args):
                 body = {"args": args}
             case DelegationBody(policies):
                 body = {"pol": [policy.serialize() for policy in policies]}
-        d = {
+        return {
             "iss": str(self.issuer),
             "aud": str(self.audience),
             "sub": str(self.subject),
@@ -185,7 +199,9 @@ class NucToken:
             "nonce": self.nonce.hex(),
             **({"prf": [proof.hex() for proof in self.proofs]} if self.proofs else {}),
         }
-        return json.dumps(d)
+
+    def __str__(self) -> str:
+        return json.dumps(self.to_json())
 
 
 class MalformedDidException(Exception):

@@ -4,7 +4,7 @@ from secp256k1 import PrivateKey, PublicKey
 from nuc.builder import NucTokenBuilder
 from nuc.authority import AuthorityService
 from nuc.policy import Policy
-from nuc.token import Command, DelegationBody, Did
+from nuc.token import Command, Did
 
 
 class TestAuthorityService:
@@ -15,7 +15,7 @@ class TestAuthorityService:
         root_key = PrivateKey()
 
         response_token = (
-            NucTokenBuilder.delegation(DelegationBody([Policy.equals(".foo", 42)]))
+            NucTokenBuilder.delegation([Policy.equals(".foo", 42)])
             .audience(Did(bytes([0xBB] * 33)))
             .subject(Did(bytes([0xCC] * 33)))
             .command(Command(["nil", "db", "read"]))
