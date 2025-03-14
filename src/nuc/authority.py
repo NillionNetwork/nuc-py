@@ -78,7 +78,7 @@ class AuthorityServiceClient:
 
         payload = json.dumps(
             {
-                "nonce": list(secrets.token_bytes(16)),
+                "nonce": secrets.token_bytes(16).hex(),
             }
         ).encode("utf8")
         signature = key.ecdsa_serialize_compact(key.ecdsa_sign(payload))
