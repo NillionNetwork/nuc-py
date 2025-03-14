@@ -70,14 +70,61 @@ class ValidationParameters:
 class NucTokenValidator:
     """
     A validator for NUC tokens.
+
+    Example
+    -------
+
+    .. code-block:: py3
+
+        from nuc.validate import NucTokenValidator
+        from nuc.token import NucToken
+
+
+        token = NucToken.parse(
+            {
+                "iss": "did:nil:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "aud": "did:nil:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                "sub": "did:nil:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+                "cmd": "/nil/db/read",
+                "pol": [["==", ".foo", 42]],
+                "nonce": "beef",
+            }
+        )
+
+        validator = NucTokenValidator([])
+        validator.validate(token)
+
     """
 
     def __init__(self, root_issuers: List[Did]) -> None:
+        """
+        Construct a new token validator.
+
+        Arguments
+        ---------
+
+        root_issuers
+            The list of entities that can issue root tokens.
+        """
         self._root_issuers = set(root_issuers)
 
-    def validate(self, envelope: NucTokenEnvelope, parameters: ValidationParameters):
+    def validate(
+        self,
+        envelope: NucTokenEnvelope,
+        parameters: ValidationParameters = ValidationParameters.default(),
+    ) -> None:
         """
         Validate a NUC token using the given parameters.
+
+        This will raise an exception if validation fails.
+
+        Arguments
+        ---------
+
+        envelope
+            The token to be validated.
+        parameters
+            The validation parameters.
         """
 
         if len(envelope.proofs) + 1 > parameters.max_chain_length:

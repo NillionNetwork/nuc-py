@@ -26,6 +26,12 @@ class Did:
     def nil(public_key: bytes) -> "Did":
         """
         Construct a new DID for the "nil" method.
+
+        Arguments
+        ---------
+
+        public_key
+            The public key in compressed form.
         """
 
         return Did(public_key)
@@ -62,6 +68,15 @@ class Command:
     def parse(data: str) -> "Command":
         """
         Parse a command from a string.
+
+        Example
+        -------
+
+        .. code-block:: py3
+
+            from nuc.token import Command
+
+            command = Command.parse("/nil/db/read")
         """
 
         if not data.startswith("/"):
@@ -79,6 +94,18 @@ class Command:
     def is_attenuation_of(self, other: "Command") -> bool:
         """
         Check if this command is an attenuation of another one.
+
+        Example
+        -------
+
+        .. code-block:: py3
+
+            from nuc.token import Command
+
+            parent = Command.parse("/nil/db")
+            child = Command.parse("/nil/db/read")
+
+            assert child.is_attenuation_of(parent)
         """
 
         if len(self.segments) < len(other.segments):
@@ -130,6 +157,30 @@ class NucToken:
     def parse(raw_json: str | bytes) -> "NucToken":
         """
         Parse a NUC token from a string.
+
+        Arguments
+        ---------
+
+        raw_json
+            The raw JSON to be parsed.
+
+        Example
+        -------
+
+        .. code-block:: py3
+
+            from nuc.token import NucToken
+
+            token = NucToken.parse(
+                {
+                    "iss": "did:nil:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                    "aud": "did:nil:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                    "sub": "did:nil:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+                    "cmd": "/nil/db/read",
+                    "pol": [["==", ".foo", 42]],
+                    "nonce": "beef",
+                }
+            )
         """
         try:
             data = json.loads(raw_json)

@@ -54,7 +54,7 @@ The documentation can be generated automatically from the source files using `Sp
 
     uv sync --extra docs
     cd docs
-    uv run sphinx-apidoc -f -E --templatedir=_templates -o _source .. && uv run make html
+    uv run sphinx-apidoc -f -E --templatedir=_templates -o _source ../src && uv run make html
 
 Testing and Conventions
 ^^^^^^^^^^^^^^^^^^^^^^^

@@ -28,6 +28,11 @@ class DecodedNucToken:
     def parse(data: str) -> "DecodedNucToken":
         """
         Parse a token from its serialized JWT form.
+
+        Note that this only parses the token and ensures it is structurally correct. This does not perform
+        any form of signature validation.
+
+        .. note:: Users should use :class:`NucTokenEnvelope` to parse tokens.
         """
 
         parts = data.split(".", 2)
@@ -61,7 +66,7 @@ class DecodedNucToken:
         """
         return f"{self.raw_header}.{self.raw_payload}.{urlsafe_base64_encode(self.signature)}"
 
-    def validate_signature(self):
+    def validate_signature(self) -> None:
         """
         Validate the signature in this token.
         """
@@ -96,6 +101,17 @@ class NucTokenEnvelope:
 
         Note that this only parses the envelope and ensures it is structurally correct. This does not perform
         any form of signature validation.
+
+        Example
+        -------
+
+        .. code-block:: py3
+
+            from nuc.envelope import NucTokenEnvelope
+
+            raw_token = "....."
+
+            token = NucTokenEnvelope.parse(raw_token)
         """
 
         tokens = data.split("/")
@@ -105,9 +121,11 @@ class NucTokenEnvelope:
         proofs = [DecodedNucToken.parse(token) for token in tokens[1:]]
         return NucTokenEnvelope(token, proofs)
 
-    def validate_signatures(self):
+    def validate_signatures(self) -> None:
         """
         Validate the signature in this envelope.
+
+        This will raise an exception is the token or any of its proofs is not signed by its issuer.
         """
 
         for token in [self.token, *self.proofs]:
