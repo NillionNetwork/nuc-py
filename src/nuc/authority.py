@@ -2,6 +2,7 @@
 Authority service APIs.
 """
 
+from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass
 import secrets
 import json
@@ -76,9 +77,14 @@ class AuthorityServiceClient:
             never transmitted anywhere.
         """
 
+        public_key = self.about().public_key
+
+        expires_at = datetime.now(timezone.utc) + timedelta(minutes=1)
         payload = json.dumps(
             {
                 "nonce": secrets.token_bytes(16).hex(),
+                "target_public_key": public_key.serialize().hex(),
+                "expires_at": int(expires_at.timestamp()),
             }
         ).encode("utf8")
         signature = key.ecdsa_serialize_compact(key.ecdsa_sign(payload))

@@ -9,10 +9,16 @@ from nuc.token import Command, Did
 
 class TestAuthorityService:
     @patch("requests.post")
-    def test_request_token(self, mock_post):
+    @patch("requests.get")
+    def test_request_token(self, mock_get, mock_post):
         base_url = "http://127.0.0.1"
         service = AuthorityServiceClient(base_url)
         root_key = PrivateKey()
+
+        # Pretend like we get back a public key
+        mock_get.return_value.json.return_value = {
+            "public_key": PrivateKey().pubkey.serialize().hex()  # type: ignore
+        }
 
         response_token = (
             NucTokenBuilder.delegation([Policy.equals(".foo", 42)])
