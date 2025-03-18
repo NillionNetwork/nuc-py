@@ -2,12 +2,18 @@
 Authority service APIs.
 """
 
+import logging
+import hashlib
 from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass
 import secrets
 import json
 import requests
 from secp256k1 import PrivateKey, PublicKey
+
+from nuc.payer import Payer
+
+logger = logging.getLogger(__name__)
 
 
 DEFAULT_REQUEST_TIMEOUT: float = 10
@@ -101,6 +107,45 @@ class AuthorityServiceClient:
         response.raise_for_status()
         response = response.json()
         return response["token"]
+
+    def pay_subscription(
+        self,
+        our_public_key: PublicKey,
+        payer: Payer,
+    ) -> None:
+        """
+        Pay for a subscription.
+
+        Arguments
+        ---------
+
+        our_public_key
+            The public key the subscription is for.
+        payer
+            The payer that will be used.
+        """
+        public_key = self.about().public_key.serialize()
+        payload = json.dumps(
+            {
+                "nonce": secrets.token_bytes(16).hex(),
+                "service_public_key": public_key.hex(),
+            }
+        ).encode("utf8")
+        # Note: add proper value later on
+        tx_hash = payer.pay(hashlib.sha256(payload).digest(), amount_unil=1)
+
+        request = {
+            "tx_hash": tx_hash,
+            "payload": payload.hex(),
+            "public_key": our_public_key.serialize().hex(),
+        }
+
+        response = requests.post(
+            f"{self._base_url}/api/v1/payments/validate",
+            json=request,
+            timeout=self._timeout_seconds,
+        )
+        response.raise_for_status()
 
     def about(self) -> AuthorityServiceAbout:
         """
