@@ -2,17 +2,17 @@ from unittest.mock import patch
 from secp256k1 import PrivateKey, PublicKey
 
 from nuc.builder import NucTokenBuilder
-from nuc.authority import AuthorityServiceClient
+from nuc.nilauth import NilauthClient
 from nuc.policy import Policy
 from nuc.token import Command, Did
 
 
-class TestAuthorityService:
+class TestNilauthClient:
     @patch("requests.post")
     @patch("requests.get")
     def test_request_token(self, mock_get, mock_post):
         base_url = "http://127.0.0.1"
-        service = AuthorityServiceClient(base_url)
+        client = NilauthClient(base_url)
         root_key = PrivateKey()
 
         # Pretend like we get back a public key
@@ -30,7 +30,7 @@ class TestAuthorityService:
         mock_post.return_value.json.return_value = {"token": response_token}
 
         key = PrivateKey()
-        token = service.request_token(key)
+        token = client.request_token(key)
         assert token == response_token
 
         invocation = mock_post.call_args_list[0]

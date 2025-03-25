@@ -5,12 +5,6 @@ Submodules
 ----------
 
 
-.. automodule:: nuc.authority
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-
 .. automodule:: nuc.builder
    :members:
    :undoc-members:
@@ -18,6 +12,18 @@ Submodules
 
 
 .. automodule:: nuc.envelope
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+
+.. automodule:: nuc.nilauth
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+
+.. automodule:: nuc.payer
    :members:
    :undoc-members:
    :show-inheritance:

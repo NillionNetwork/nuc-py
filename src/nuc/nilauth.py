@@ -1,5 +1,5 @@
 """
-Authority service APIs.
+nilauth client.
 """
 
 import logging
@@ -20,20 +20,20 @@ DEFAULT_REQUEST_TIMEOUT: float = 10
 
 
 @dataclass()
-class AuthorityServiceAbout:
+class NilauthAbout:
     """
-    Information about the authority service.
+    Information about a nilauth server.
     """
 
     public_key: PublicKey
     """
-    The authority service's public key.
+    The server's public key.
     """
 
 
-class AuthorityServiceClient:
+class NilauthClient:
     """
-    A class to interact with the authority service.
+    A class to interact with nilauth.
 
     Example
     -------
@@ -41,10 +41,10 @@ class AuthorityServiceClient:
     .. code-block:: py3
 
         from secp256k1 import PrivateKey
-        from nuc.authority import AuthorityServiceClient
+        from nuc.nilauth import NilauthClient
 
-        # Create a client to talk to the authority service at the given url.
-        client = AuthorityServiceClient(base_url)
+        # Create a client to talk to nilauth at the given url.
+        client = NilauthClient(base_url)
 
         # Create a private key.
         key = PrivateKey()
@@ -55,13 +55,13 @@ class AuthorityServiceClient:
 
     def __init__(self, base_url: str, timeout_seconds=DEFAULT_REQUEST_TIMEOUT) -> None:
         """
-        Construct a new client to talk to the authority service.
+        Construct a new client to talk to nilauth.
 
         Arguments
         ---------
 
         base_url
-            The authority service URL.
+            nilauth's URL.
         timeout_seconds
             The timeout to use for all requests.
         """
@@ -147,9 +147,9 @@ class AuthorityServiceClient:
         )
         response.raise_for_status()
 
-    def about(self) -> AuthorityServiceAbout:
+    def about(self) -> NilauthAbout:
         """
-        Get information about the authority service.
+        Get information about the nilauth server.
         """
         response = requests.get(
             f"{self._base_url}/about", timeout=self._timeout_seconds
@@ -158,4 +158,4 @@ class AuthorityServiceClient:
         about = response.json()
         raw_public_key = bytes.fromhex(about["public_key"])
         public_key = PublicKey(raw_public_key, raw=True)
-        return AuthorityServiceAbout(public_key=public_key)
+        return NilauthAbout(public_key=public_key)
