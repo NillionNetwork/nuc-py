@@ -125,6 +125,7 @@ class NilauthClient:
             The payer that will be used.
         """
         public_key = self.about().public_key.serialize()
+        cost = self.subscription_cost()
         payload = json.dumps(
             {
                 "nonce": secrets.token_bytes(16).hex(),
@@ -132,7 +133,7 @@ class NilauthClient:
             }
         ).encode("utf8")
         # Note: add proper value later on
-        tx_hash = payer.pay(hashlib.sha256(payload).digest(), amount_unil=1)
+        tx_hash = payer.pay(hashlib.sha256(payload).digest(), amount_unil=cost)
 
         request = {
             "tx_hash": tx_hash,
@@ -159,3 +160,15 @@ class NilauthClient:
         raw_public_key = bytes.fromhex(about["public_key"])
         public_key = PublicKey(raw_public_key, raw=True)
         return NilauthAbout(public_key=public_key)
+
+    def subscription_cost(self) -> int:
+        """
+        Get the subscription cost in unils.
+        """
+
+        response = requests.get(
+            f"{self._base_url}/api/v1/payments/cost", timeout=self._timeout_seconds
+        )
+        response.raise_for_status()
+        response = response.json()
+        return response["cost_unils"]
