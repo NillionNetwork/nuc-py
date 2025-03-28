@@ -124,6 +124,20 @@ class NucTokenBuilder:
             subject=token.subject,
         )
 
+    def body(self, body: InvocationBody | DelegationBody) -> "NucTokenBuilder":
+        """
+        Set the body for the token being built.
+
+        Arguments
+        ---------
+
+        body
+            The body for the token.
+        """
+
+        self._body = body
+        return self
+
     def audience(self, audience: Did) -> Self:
         """
         Set the audience for the token to be built.
