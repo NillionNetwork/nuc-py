@@ -8,10 +8,14 @@ from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass
 import secrets
 import json
+from typing import List
 import requests
 from secp256k1 import PrivateKey, PublicKey
 
 from nuc.payer import Payer
+from nuc.envelope import NucTokenEnvelope
+from nuc.builder import NucTokenBuilder
+from nuc.token import Command, Did, InvocationBody
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +23,7 @@ logger = logging.getLogger(__name__)
 DEFAULT_REQUEST_TIMEOUT: float = 10
 
 
-@dataclass()
+@dataclass
 class NilauthAbout:
     """
     Information about a nilauth server.
@@ -29,6 +33,16 @@ class NilauthAbout:
     """
     The server's public key.
     """
+
+
+@dataclass
+class RevokedToken:
+    """
+    A revoked token.
+    """
+
+    token_hash: bytes
+    revoked_at: datetime
 
 
 class NilauthClient:
@@ -172,3 +186,56 @@ class NilauthClient:
         response.raise_for_status()
         response = response.json()
         return response["cost_unils"]
+
+    def revoke_token(self, token: NucTokenEnvelope, key: PrivateKey) -> None:
+        """
+        Revoke a token.
+
+        Arguments
+        ---------
+
+        token
+            The token to be revoked.
+        key
+            The private key to use to mint the token.
+        """
+        about = self.about()
+        serialized_token = token.serialize()
+        auth_token = self.request_token(key)
+        auth_token = NucTokenEnvelope.parse(auth_token)
+        auth_token.validate_signatures()
+        args = {"token": serialized_token}
+        invocation = (
+            NucTokenBuilder.extending(auth_token)
+            .body(InvocationBody(args))
+            .command(Command(["nuc", "revoke"]))
+            .audience(Did(about.public_key.serialize()))
+            .build(key)
+        )
+        response = requests.post(
+            f"{self._base_url}/api/v1/revocations/revoke",
+            headers={"Authorization": f"Bearer {invocation}"},
+            timeout=self._timeout_seconds,
+        )
+        response.raise_for_status()
+
+    def lookup_revoked_tokens(self, envelope: NucTokenEnvelope) -> List[RevokedToken]:
+        """
+        Lookup revoked tokens that would invalidate the given token.
+
+        Arguments
+        ---------
+
+        envelope
+            The token envelope to do lookups for.
+        """
+
+        hashes = [t.compute_hash().hex() for t in (envelope.token, *envelope.proofs)]
+        request = {"hashes": hashes}
+        response = requests.post(
+            f"{self._base_url}/api/v1/revocations/lookup",
+            json=request,
+            timeout=self._timeout_seconds,
+        )
+        response.raise_for_status()
+        return [RevokedToken(**t) for t in response.json()["revoked"]]
