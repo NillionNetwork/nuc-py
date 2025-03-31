@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass
 import secrets
 import json
+from time import sleep
 from typing import List
 import requests
 from secp256k1 import PrivateKey, PublicKey
@@ -21,6 +22,8 @@ logger = logging.getLogger(__name__)
 
 
 DEFAULT_REQUEST_TIMEOUT: float = 10
+PAYMENT_TX_RETRIES: List[int] = [1, 2, 3, 5, 10, 10, 10]
+PAYMENT_RETRY_STATUS_CODE: int = 425
 
 
 @dataclass
@@ -148,6 +151,7 @@ class NilauthClient:
         ).encode("utf8")
         # Note: add proper value later on
         tx_hash = payer.pay(hashlib.sha256(payload).digest(), amount_unil=cost)
+        logger.info("Submitting payment to nilauth with tx hash %s", tx_hash)
 
         request = {
             "tx_hash": tx_hash,
@@ -155,12 +159,23 @@ class NilauthClient:
             "public_key": our_public_key.serialize().hex(),
         }
 
-        response = requests.post(
-            f"{self._base_url}/api/v1/payments/validate",
-            json=request,
-            timeout=self._timeout_seconds,
+        for sleep_time in PAYMENT_TX_RETRIES:
+            response = requests.post(
+                f"{self._base_url}/api/v1/payments/validate",
+                json=request,
+                timeout=self._timeout_seconds,
+            )
+            if response.status_code != PAYMENT_RETRY_STATUS_CODE:
+                response.raise_for_status()
+                return
+            logger.warning(
+                "Server couldn't process payment transaction, retrying in %s",
+                sleep_time,
+            )
+            sleep(sleep_time)
+        raise PaymentValidationException(
+            f"server could not validate payment with tx hash {tx_hash}"
         )
-        response.raise_for_status()
 
     def about(self) -> NilauthAbout:
         """
@@ -239,3 +254,9 @@ class NilauthClient:
         )
         response.raise_for_status()
         return [RevokedToken(**t) for t in response.json()["revoked"]]
+
+
+class PaymentValidationException(Exception):
+    """
+    An exception raised when the validation for a payment fails.
+    """
