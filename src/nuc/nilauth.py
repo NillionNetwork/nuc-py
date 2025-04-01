@@ -9,7 +9,7 @@ from dataclasses import dataclass
 import secrets
 import json
 from time import sleep
-from typing import List
+from typing import Any, List
 import requests
 from secp256k1 import PrivateKey, PublicKey
 
@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_REQUEST_TIMEOUT: float = 10
 PAYMENT_TX_RETRIES: List[int] = [1, 2, 3, 5, 10, 10, 10]
-PAYMENT_RETRY_STATUS_CODE: int = 425
+TX_NOT_COMMITTED_ERROR_CODE: str = "TRANSACTION_NOT_COMMITTED"
 
 
 @dataclass
@@ -116,13 +116,10 @@ class NilauthClient:
             "signature": signature.hex(),
             "payload": payload.hex(),
         }
-        response = requests.post(
+        response = self._post(
             f"{self._base_url}/api/v1/nucs/create",
-            json=request,
-            timeout=self._timeout_seconds,
+            request,
         )
-        response.raise_for_status()
-        response = response.json()
         return response["token"]
 
     def pay_subscription(
@@ -160,32 +157,27 @@ class NilauthClient:
         }
 
         for sleep_time in PAYMENT_TX_RETRIES:
-            response = requests.post(
-                f"{self._base_url}/api/v1/payments/validate",
-                json=request,
-                timeout=self._timeout_seconds,
-            )
-            if response.status_code != PAYMENT_RETRY_STATUS_CODE:
-                response.raise_for_status()
-                return
-            logger.warning(
-                "Server couldn't process payment transaction, retrying in %s",
-                sleep_time,
-            )
-            sleep(sleep_time)
-        raise PaymentValidationException(
-            f"server could not validate payment with tx hash {tx_hash}"
-        )
+            try:
+                return self._post(
+                    f"{self._base_url}/api/v1/payments/validate",
+                    request,
+                )
+            except RequestException as e:
+                if e.error_code == TX_NOT_COMMITTED_ERROR_CODE:
+                    logger.warning(
+                        "Server couldn't process payment transaction, retrying in %s",
+                        sleep_time,
+                    )
+                    sleep(sleep_time)
+                else:
+                    raise
+        raise PaymentValidationException(tx_hash, payload)
 
     def about(self) -> NilauthAbout:
         """
         Get information about the nilauth server.
         """
-        response = requests.get(
-            f"{self._base_url}/about", timeout=self._timeout_seconds
-        )
-        response.raise_for_status()
-        about = response.json()
+        about = self._get(f"{self._base_url}/about")
         raw_public_key = bytes.fromhex(about["public_key"])
         public_key = PublicKey(raw_public_key, raw=True)
         return NilauthAbout(public_key=public_key)
@@ -195,11 +187,7 @@ class NilauthClient:
         Get the subscription cost in unils.
         """
 
-        response = requests.get(
-            f"{self._base_url}/api/v1/payments/cost", timeout=self._timeout_seconds
-        )
-        response.raise_for_status()
-        response = response.json()
+        response = self._get(f"{self._base_url}/api/v1/payments/cost")
         return response["cost_unils"]
 
     def revoke_token(self, token: NucTokenEnvelope, key: PrivateKey) -> None:
@@ -227,12 +215,11 @@ class NilauthClient:
             .audience(Did(about.public_key.serialize()))
             .build(key)
         )
-        response = requests.post(
+        self._post(
             f"{self._base_url}/api/v1/revocations/revoke",
+            {},
             headers={"Authorization": f"Bearer {invocation}"},
-            timeout=self._timeout_seconds,
         )
-        response.raise_for_status()
 
     def lookup_revoked_tokens(self, envelope: NucTokenEnvelope) -> List[RevokedToken]:
         """
@@ -247,16 +234,63 @@ class NilauthClient:
 
         hashes = [t.compute_hash().hex() for t in (envelope.token, *envelope.proofs)]
         request = {"hashes": hashes}
-        response = requests.post(
+        response = self._post(
             f"{self._base_url}/api/v1/revocations/lookup",
-            json=request,
-            timeout=self._timeout_seconds,
+            request,
         )
-        response.raise_for_status()
-        return [RevokedToken(**t) for t in response.json()["revoked"]]
+        return [RevokedToken(**t) for t in response["revoked"]]
+
+    def _get(self, url: str, **kwargs) -> Any:
+        response = requests.get(url, timeout=self._timeout_seconds, **kwargs)
+        return self._response_as_json(response)
+
+    def _post(self, url: str, body: Any, **kwargs) -> Any:
+        response = requests.post(
+            url, timeout=self._timeout_seconds, json=body, **kwargs
+        )
+        return self._response_as_json(response)
+
+    @staticmethod
+    def _response_as_json(response: requests.Response) -> Any:
+        body_json = response.json()
+        code = response.status_code
+        if 200 <= code < 300:
+            return body_json
+        message = body_json.get("message")
+        error_code = body_json.get("error_code")
+        if not message or not error_code:
+            raise RequestException(
+                "server did not reply with any error messages", "UNKNOWN"
+            )
+        raise RequestException(message, error_code)
+
+
+class RequestException(Exception):
+    """
+    An exception raised when a request fails.
+    """
+
+    message: str
+    error_code: str
+
+    def __init__(self, message: str, error_code: str) -> None:
+        super().__init__(self, f"{error_code}: {message}")
+        self.message = message
+        self.error_code = error_code
 
 
 class PaymentValidationException(Exception):
     """
     An exception raised when the validation for a payment fails.
     """
+
+    tx_hash: str
+    payload: bytes
+
+    def __init__(self, tx_hash: str, payload: bytes) -> None:
+        super().__init__(
+            self,
+            f"failed to validate payment: tx_hash='{tx_hash}', payload='{payload.hex()}'",
+        )
+        self.tx_hash = tx_hash
+        self.payload = payload
