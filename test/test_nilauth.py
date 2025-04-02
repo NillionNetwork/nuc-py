@@ -19,6 +19,7 @@ class TestNilauthClient:
         mock_get.return_value.json.return_value = {
             "public_key": PrivateKey().pubkey.serialize().hex()  # type: ignore
         }
+        mock_get.return_value.status_code = 200
 
         response_token = (
             NucTokenBuilder.delegation([Policy.equals(".foo", 42)])
@@ -28,6 +29,7 @@ class TestNilauthClient:
             .build(root_key)
         )
         mock_post.return_value.json.return_value = {"token": response_token}
+        mock_post.return_value.status_code = 200
 
         key = PrivateKey()
         token = client.request_token(key)
