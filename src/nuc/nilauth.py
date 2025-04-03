@@ -9,7 +9,7 @@ from dataclasses import dataclass
 import secrets
 import json
 from time import sleep
-from typing import Any, List
+from typing import Any, Dict, List
 import requests
 from secp256k1 import PrivateKey, PublicKey
 
@@ -35,6 +35,18 @@ class NilauthAbout:
     public_key: PublicKey
     """
     The server's public key.
+    """
+
+
+@dataclass
+class Subscription:
+    """
+    Information about a subscription.
+    """
+
+    expires_at: datetime
+    """
+    The timestamp at which this subscription expires.
     """
 
 
@@ -101,21 +113,13 @@ class NilauthClient:
         """
 
         public_key = self.about().public_key
-
         expires_at = datetime.now(timezone.utc) + timedelta(minutes=1)
-        payload = json.dumps(
-            {
-                "nonce": secrets.token_bytes(16).hex(),
-                "target_public_key": public_key.serialize().hex(),
-                "expires_at": int(expires_at.timestamp()),
-            }
-        ).encode("utf8")
-        signature = key.ecdsa_serialize_compact(key.ecdsa_sign(payload))
-        request = {
-            "public_key": key.pubkey.serialize().hex(),  # type: ignore
-            "signature": signature.hex(),
-            "payload": payload.hex(),
+        payload = {
+            "nonce": secrets.token_bytes(16).hex(),
+            "target_public_key": public_key.serialize().hex(),
+            "expires_at": int(expires_at.timestamp()),
         }
+        request = self._create_signed_request(payload, key)
         response = self._post(
             f"{self._base_url}/api/v1/nucs/create",
             request,
@@ -172,6 +176,37 @@ class NilauthClient:
                 else:
                     raise
         raise PaymentValidationException(tx_hash, payload)
+
+    def subscription_status(self, key: PrivateKey) -> Subscription | None:
+        """
+        Get the status of a subscription.
+
+        Arguments
+        ---------
+
+        key
+            The key for which to get the subscription information.
+
+        .. note:: The private key is only used to sign a payload to prove ownership and is
+            never transmitted anywhere.
+        """
+
+        expires_at = datetime.now(timezone.utc) + timedelta(minutes=1)
+        payload = {
+            "nonce": secrets.token_bytes(16).hex(),
+            "expires_at": int(expires_at.timestamp()),
+        }
+        request = self._create_signed_request(payload, key)
+        response = self._post(
+            f"{self._base_url}/api/v1/subscriptions/status",
+            request,
+        )
+        subscription = response["subscription"]
+        if not subscription:
+            return None
+        return Subscription(
+            datetime.fromtimestamp(subscription["expires_at"], timezone.utc)
+        )
 
     def about(self) -> NilauthAbout:
         """
@@ -263,6 +298,16 @@ class NilauthClient:
                 "server did not reply with any error messages", "UNKNOWN"
             )
         raise RequestException(message, error_code)
+
+    @staticmethod
+    def _create_signed_request(payload: Any, key: PrivateKey) -> Dict[str, Any]:
+        payload = json.dumps(payload).encode("utf8")
+        signature = key.ecdsa_serialize_compact(key.ecdsa_sign(payload))
+        return {
+            "public_key": key.pubkey.serialize().hex(),  # type: ignore
+            "signature": signature.hex(),
+            "payload": payload.hex(),
+        }
 
 
 class RequestException(Exception):
