@@ -39,7 +39,7 @@ class NilauthAbout:
 
 
 @dataclass
-class Subscription:
+class SubscriptionDetails:
     """
     Information about a subscription.
     """
@@ -47,6 +47,28 @@ class Subscription:
     expires_at: datetime
     """
     The timestamp at which this subscription expires.
+    """
+
+    renewable_at: datetime
+    """
+    The timestamp at which this subscription can be renewed.
+    """
+
+
+@dataclass
+class Subscription:
+    """
+    Information about a subscription.
+    """
+
+    subscribed: bool
+    """
+    Whether there is an active subscription
+    """
+
+    details: SubscriptionDetails | None
+    """
+    The details about the subscription.
     """
 
 
@@ -128,7 +150,7 @@ class NilauthClient:
 
     def pay_subscription(
         self,
-        our_public_key: PublicKey,
+        key: PrivateKey,
         payer: Payer,
     ) -> None:
         """
@@ -137,11 +159,16 @@ class NilauthClient:
         Arguments
         ---------
 
-        our_public_key
-            The public key the subscription is for.
+        key
+            The key the subscription is for.
         payer
             The payer that will be used.
         """
+        subscription = self.subscription_status(key)
+        if subscription.details and subscription.details.renewable_at > datetime.now(
+            timezone.utc
+        ):
+            raise CannotRenewSubscription(subscription.details.renewable_at)
         public_key = self.about().public_key.serialize()
         cost = self.subscription_cost()
         payload = json.dumps(
@@ -157,7 +184,7 @@ class NilauthClient:
         request = {
             "tx_hash": tx_hash,
             "payload": payload.hex(),
-            "public_key": our_public_key.serialize().hex(),
+            "public_key": key.pubkey.serialize().hex(),  # type: ignore
         }
 
         for sleep_time in PAYMENT_TX_RETRIES:
@@ -177,7 +204,7 @@ class NilauthClient:
                     raise
         raise PaymentValidationException(tx_hash, payload)
 
-    def subscription_status(self, key: PrivateKey) -> Subscription | None:
+    def subscription_status(self, key: PrivateKey) -> Subscription:
         """
         Get the status of a subscription.
 
@@ -201,12 +228,16 @@ class NilauthClient:
             f"{self._base_url}/api/v1/subscriptions/status",
             request,
         )
-        subscription = response["subscription"]
-        if not subscription:
-            return None
-        return Subscription(
-            datetime.fromtimestamp(subscription["expires_at"], timezone.utc)
-        )
+        subscribed = response["subscribed"]
+        details = response["details"]
+        if details:
+            details = SubscriptionDetails(
+                expires_at=datetime.fromtimestamp(details["expires_at"], timezone.utc),
+                renewable_at=datetime.fromtimestamp(
+                    details["renewable_at"], timezone.utc
+                ),
+            )
+        return Subscription(subscribed, details)
 
     def about(self) -> NilauthAbout:
         """
@@ -339,3 +370,15 @@ class PaymentValidationException(Exception):
         )
         self.tx_hash = tx_hash
         self.payload = payload
+
+
+class CannotRenewSubscription(Exception):
+    """
+    An exception raised when a subscription cannot be renewed yet.
+    """
+
+    renewable_at: datetime
+
+    def __init__(self, renewable_at: datetime) -> None:
+        super().__init__(self, f"cannot renew before {renewable_at.isoformat()}")
+        self.renewable_at = renewable_at
