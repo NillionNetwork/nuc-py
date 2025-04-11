@@ -61,12 +61,13 @@ class Asserter:
         self, parameters: ValidationParameters = ValidationParameters.default()
     ) -> None:
         self._parameters = parameters
+        self._root_dids = ROOT_DIDS
 
     def assert_failure(
         self, envelope: NucTokenEnvelope, expected_failure: ValidationKind
     ) -> None:
         self._log_tokens(envelope)
-        validator = NucTokenValidator(ROOT_DIDS)
+        validator = NucTokenValidator(self._root_dids)
         try:
             validator.validate(envelope, self._parameters)
             raise Exception("validation did not fail")
@@ -75,7 +76,7 @@ class Asserter:
 
     def assert_success(self, envelope: NucTokenEnvelope):
         self._log_tokens(envelope)
-        validator = NucTokenValidator(ROOT_DIDS)
+        validator = NucTokenValidator(self._root_dids)
         validator.validate(envelope, self._parameters)
 
     @staticmethod
@@ -276,7 +277,9 @@ class TestTokenValidator:
         envelope = f"{header}.{payload}.{urlsafe_base64_encode(bytes(signature))}"
         envelope = NucTokenEnvelope.parse(envelope)
 
-        Asserter().assert_failure(envelope, ValidationKind.INVALID_SIGNATURES)
+        asserter = Asserter()
+        asserter._root_dids = []
+        asserter.assert_failure(envelope, ValidationKind.INVALID_SIGNATURES)
 
     def test_missing_proof(self):
         key = PrivateKey()
