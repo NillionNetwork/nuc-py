@@ -151,6 +151,8 @@ class NucTokenValidator:
 
     def _validate_proofs(self, proofs: List[NucToken]) -> None:
         if not proofs:
+            if self._root_issuers:
+                raise ValidationException(ValidationKind.ROOT_KEY_SIGNATURE_MISSING)
             return
 
         if proofs[-1].issuer not in self._root_issuers:
