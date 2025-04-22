@@ -141,7 +141,7 @@ class NucTokenValidator:
         # Build a chain from root token up to the token itself
         token_chain = [token, *proofs]
         token_chain.reverse()
-        self._validate_proofs(proofs)
+        self._validate_proofs(token, proofs)
         self._validate_token_chain(token_chain, parameters)
         self._validate_token(token, proofs, parameters.token_requirements)
         try:
@@ -149,14 +149,13 @@ class NucTokenValidator:
         except InvalidSignatureException as ex:
             raise ValidationException(ValidationKind.INVALID_SIGNATURES) from ex
 
-    def _validate_proofs(self, proofs: List[NucToken]) -> None:
-        if not proofs:
-            if self._root_issuers:
+    def _validate_proofs(self, token: NucToken, proofs: List[NucToken]) -> None:
+        if self._root_issuers:
+            # The root issuer of this token is either the last proof issuer or the issuer of the
+            # token itself if we have no proofs.
+            root = proofs[-1] if proofs else token
+            if root.issuer not in self._root_issuers:
                 raise ValidationException(ValidationKind.ROOT_KEY_SIGNATURE_MISSING)
-            return
-
-        if proofs[-1].issuer not in self._root_issuers:
-            raise ValidationException(ValidationKind.ROOT_KEY_SIGNATURE_MISSING)
 
         for proof in proofs:
             match proof.body:
@@ -239,7 +238,6 @@ class NucTokenValidator:
         proofs: List[NucToken],
         token_requirements: InvocationRequirement | DelegationRequirement | None,
     ) -> None:
-        print(token_requirements)
         match token.body:
             case DelegationBody():
                 match token_requirements:

@@ -560,3 +560,26 @@ class TestTokenValidator:
         parameters = ValidationParameters.default()
         parameters.token_requirements = InvocationRequirement(rpc_did)
         Asserter(parameters).assert_success(envelope)
+
+    def test_root_token(self):
+        subject_key = PrivateKey()
+        root = delegation(subject_key).command(Command(["nil"]))
+        envelope = Chainer().chain(
+            [
+                SignableNucTokenBuilder.issued_by_root(root),
+            ]
+        )
+        parameters = ValidationParameters.default()
+        Asserter(parameters).assert_success(envelope)
+
+    def test_no_root_keys(self):
+        subject_key = PrivateKey()
+        root = delegation(subject_key).command(Command(["nil"]))
+        envelope = Chainer().chain(
+            [
+                SignableNucTokenBuilder(subject_key, root),
+            ]
+        )
+        asserter = Asserter()
+        asserter._root_dids = []
+        asserter.assert_success(envelope)
