@@ -5,7 +5,7 @@ NUC policy definitions.
 from dataclasses import dataclass
 from typing import Any, List
 
-from .selector import Selector
+from .selector import Selector, SelectorContext
 
 
 @dataclass
@@ -84,12 +84,12 @@ class OperatorPolicy:
             case AnyOfOperator(args):
                 return ["anyOf", selector, args]
 
-    def matches(self, value: Any) -> bool:
+    def matches(self, value: Any, context: SelectorContext) -> bool:
         """
         Checks whether this policy matches a value.
         """
 
-        value = self.selector.apply(value)
+        value = self.selector.apply(value, context)
         match self.operator:
             case EqualsOperator(arg):
                 return arg == value
@@ -189,7 +189,7 @@ class Policy:
             case NotConnector(policy):
                 return ["not", policy.serialize()]
 
-    def matches(self, value: Any) -> bool:
+    def matches(self, value: Any, context: SelectorContext) -> bool:
         """
         Checks whether this policy matches a value.
 
@@ -215,15 +215,15 @@ class Policy:
 
         match self.body:
             case OperatorPolicy():
-                return self.body.matches(value)
+                return self.body.matches(value, context)
             case AndConnector(policies):
                 return bool(policies) and all(
-                    policy.matches(value) for policy in policies
+                    policy.matches(value, context) for policy in policies
                 )
             case OrConnector(policies):
-                return any(policy.matches(value) for policy in policies)
+                return any(policy.matches(value, context) for policy in policies)
             case NotConnector(policy):
-                return not policy.matches(value)
+                return not policy.matches(value, context)
 
     @staticmethod
     def equals(selector: str, value: Any) -> "Policy":

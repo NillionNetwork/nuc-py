@@ -62,6 +62,7 @@ class Asserter:
     ) -> None:
         self._parameters = parameters
         self._root_dids = ROOT_DIDS
+        self._context = {}
 
     def assert_failure(
         self, envelope: NucTokenEnvelope, expected_failure: ValidationKind
@@ -69,7 +70,7 @@ class Asserter:
         self._log_tokens(envelope)
         validator = NucTokenValidator(self._root_dids)
         try:
-            validator.validate(envelope, self._parameters)
+            validator.validate(envelope, self._context, self._parameters)
             raise Exception("validation did not fail")
         except ValidationException as ex:
             assert ex.kind == expected_failure
@@ -77,7 +78,7 @@ class Asserter:
     def assert_success(self, envelope: NucTokenEnvelope):
         self._log_tokens(envelope)
         validator = NucTokenValidator(self._root_dids)
-        validator.validate(envelope, self._parameters)
+        validator.validate(envelope, self._context, self._parameters)
 
     @staticmethod
     def _log_tokens(envelope: NucTokenEnvelope) -> None:
@@ -533,7 +534,9 @@ class TestTokenValidator:
         subject = _did_from_private_key(subject_key)
         rpc_did = Did(bytes([0xAA] * 33))
         root = (
-            NucTokenBuilder.delegation([Policy.equals(".args.foo", 42)])
+            NucTokenBuilder.delegation(
+                [Policy.equals(".args.foo", 42), Policy.equals("$.req.bar", 1337)]
+            )
             .subject(subject)
             .command(Command(["nil"]))
         )
@@ -559,7 +562,9 @@ class TestTokenValidator:
         )
         parameters = ValidationParameters.default()
         parameters.token_requirements = InvocationRequirement(rpc_did)
-        Asserter(parameters).assert_success(envelope)
+        asserter = Asserter(parameters)
+        asserter._context = {"req": {"bar": 1337}}
+        asserter.assert_success(envelope)
 
     def test_root_token(self):
         subject_key = PrivateKey()

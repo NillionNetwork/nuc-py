@@ -19,6 +19,7 @@ from nuc.policy import (
     OrConnector,
     Policy,
 )
+from nuc.selector import SelectorContext
 from nuc.token import DelegationBody, Did, InvocationBody, NucToken
 
 
@@ -111,6 +112,7 @@ class NucTokenValidator:
     def validate(
         self,
         envelope: NucTokenEnvelope,
+        context: SelectorContext,
         parameters: ValidationParameters = ValidationParameters.default(),
     ) -> None:
         """
@@ -143,7 +145,7 @@ class NucTokenValidator:
         token_chain.reverse()
         self._validate_proofs(token, proofs)
         self._validate_token_chain(token_chain, parameters)
-        self._validate_token(token, proofs, parameters.token_requirements)
+        self._validate_token(token, proofs, parameters.token_requirements, context)
         try:
             envelope.validate_signatures()
         except InvalidSignatureException as ex:
@@ -237,6 +239,7 @@ class NucTokenValidator:
         token: NucToken,
         proofs: List[NucToken],
         token_requirements: InvocationRequirement | DelegationRequirement | None,
+        context: SelectorContext,
     ) -> None:
         match token.body:
             case DelegationBody():
@@ -262,14 +265,18 @@ class NucTokenValidator:
 
                 token_json = token.to_json()
                 for proof in proofs:
-                    NucTokenValidator._validate_policy_matches(proof, token_json)
+                    NucTokenValidator._validate_policy_matches(
+                        proof, token_json, context
+                    )
 
     @staticmethod
-    def _validate_policy_matches(proof: NucToken, token_json: Dict[str, Any]) -> None:
+    def _validate_policy_matches(
+        proof: NucToken, token_json: Dict[str, Any], context: SelectorContext
+    ) -> None:
         match proof.body:
             case DelegationBody(policies):
                 for policy in policies:
-                    if not policy.matches(token_json):
+                    if not policy.matches(token_json, context):
                         raise ValidationException(ValidationKind.POLICY_NOT_MET)
             case InvocationBody():
                 raise ValidationException(ValidationKind.PROOFS_MUST_BE_DELEGATIONS)

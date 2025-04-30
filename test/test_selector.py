@@ -1,28 +1,33 @@
 import pytest
 from typing import Any, Dict, List
-from nuc.selector import MalformedSelectorException, Selector
+from nuc.selector import MalformedSelectorException, Selector, SelectorTarget
 
 
 class TestSelector:
     @pytest.mark.parametrize(
-        "input,expected",
+        "input,path,target",
         [
-            (".", []),
-            (".foo", ["foo"]),
-            (".foo.bar", ["foo", "bar"]),
+            (".", [], SelectorTarget.TOKEN),
+            (".foo", ["foo"], SelectorTarget.TOKEN),
+            ("$.foo", ["foo"], SelectorTarget.CONTEXT),
+            (".foo.bar", ["foo", "bar"], SelectorTarget.TOKEN),
+            ("$.foo.bar", ["foo", "bar"], SelectorTarget.CONTEXT),
             (
                 ".abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_",
                 ["abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_"],
+                SelectorTarget.TOKEN,
             ),
         ],
     )
-    def test_parse_valid(self, input: str, expected: List[str]):
+    def test_parse_valid(self, input: str, path: List[str], target: SelectorTarget):
         selector = Selector.parse(input)
-        assert selector.path == expected
+        assert selector.path == path
+        assert selector.target == target
+        assert str(selector) == input
 
     @pytest.mark.parametrize(
         "input",
-        ["", "A", ".#", ".🚀", ".A.", ".A..B"],
+        ["", "$", "$.", "A", ".#", ".🚀", "$.#", "$.$", ".A.", ".A..B", "$.A..B"],
     )
     def test_parse_invalid(self, input: str):
         with pytest.raises(MalformedSelectorException):
@@ -37,6 +42,21 @@ class TestSelector:
             (".foo", {"bar": 42}, None),
         ],
     )
-    def test_lookup(self, expression: str, input: Dict[str, Any], expected: Any):
+    def test_lookup_token(self, expression: str, input: Dict[str, Any], expected: Any):
         selector = Selector.parse(expression)
-        assert selector.apply(input) == expected
+        assert selector.apply(input, {}) == expected
+
+    @pytest.mark.parametrize(
+        "expression,expected",
+        [
+            ("$.req", {"foo": 42, "bar": "zar"}),
+            ("$.other", 1337),
+            ("$.req.foo", 42),
+            ("$.foo", None),
+            ("$.req.choochoo", None),
+        ],
+    )
+    def test_lookup_context(self, expression: str, expected: Any):
+        selector = Selector.parse(expression)
+        context = {"req": {"foo": 42, "bar": "zar"}, "other": 1337}
+        assert selector.apply({}, context) == expected

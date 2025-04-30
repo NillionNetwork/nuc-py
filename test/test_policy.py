@@ -90,6 +90,8 @@ class TestPolicy:
             Policy.equals(".name.first", "bob"),
             Policy.not_equals(".name.first", "john"),
             Policy.equals(".name", {"first": "bob", "last": "smith"}),
+            Policy.equals("$.req.foo", 42),
+            Policy.equals("$.other", 1337),
             Policy.equals(".", {"name": {"first": "bob", "last": "smith"}, "age": 42}),
             Policy.not_equals(".age", 150),
             Policy.any_of(".name.first", ["john", "bob"]),
@@ -102,7 +104,8 @@ class TestPolicy:
     )
     def test_evaluation_matches(self, policy: Policy):
         value = {"name": {"first": "bob", "last": "smith"}, "age": 42}
-        assert policy.matches(value)
+        context = {"req": {"foo": 42, "bar": "zar"}, "other": 1337}
+        assert policy.matches(value, context)
 
     @pytest.mark.parametrize(
         "policy",
@@ -110,6 +113,8 @@ class TestPolicy:
             Policy.equals(".name.first", "john"),
             Policy.not_equals(".name.first", "bob"),
             Policy.equals(".name", {"first": "john", "last": "smith"}),
+            Policy.equals("$.req.foo", 43),
+            Policy.not_equals("$.other", 1337),
             Policy.equals(
                 ".", {"name": {"first": "john", "last": "smith"}, "age": 100}
             ),
@@ -128,4 +133,5 @@ class TestPolicy:
     )
     def test_evaluation_does_not_match(self, policy: Policy):
         value = {"name": {"first": "bob", "last": "smith"}, "age": 42}
-        assert not policy.matches(value)
+        context = {"req": {"foo": 42, "bar": "zar"}, "other": 1337}
+        assert not policy.matches(value, context)
