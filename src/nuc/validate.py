@@ -47,7 +47,6 @@ class ValidationParameters:
     Parameters used during token validation.
     """
 
-    current_time: datetime
     max_chain_length: int
     max_policy_width: int
     max_policy_depth: int
@@ -60,7 +59,6 @@ class ValidationParameters:
         """
 
         return ValidationParameters(
-            current_time=datetime.now(timezone.utc),
             max_chain_length=5,
             max_policy_width=10,
             max_policy_depth=5,
@@ -108,6 +106,7 @@ class NucTokenValidator:
             The list of entities that can issue root tokens.
         """
         self._root_issuers = set(root_issuers)
+        self._time_provider = lambda: datetime.now(timezone.utc)
 
     def validate(
         self,
@@ -143,8 +142,9 @@ class NucTokenValidator:
         # Build a chain from root token up to the token itself
         token_chain = [token, *proofs]
         token_chain.reverse()
+        now = self._time_provider()
         self._validate_proofs(token, proofs)
-        self._validate_token_chain(token_chain, parameters)
+        self._validate_token_chain(token_chain, parameters, now)
         self._validate_token(token, proofs, parameters.token_requirements, context)
         try:
             envelope.validate_signatures()
@@ -168,14 +168,12 @@ class NucTokenValidator:
 
     @staticmethod
     def _validate_token_chain(
-        tokens: List[NucToken], parameters: ValidationParameters
+        tokens: List[NucToken], parameters: ValidationParameters, now: datetime
     ) -> None:
         for previous, current in itertools.pairwise(tokens):
             NucTokenValidator._validate_relationship_properties(previous, current)
         for token in tokens:
-            NucTokenValidator._validate_temporal_properties(
-                token, parameters.current_time
-            )
+            NucTokenValidator._validate_temporal_properties(token, now)
         for token in tokens:
             if isinstance(token.body, DelegationBody):
                 NucTokenValidator._validate_policies_properties(
