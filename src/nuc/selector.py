@@ -104,7 +104,7 @@ class Selector:
                     return None
                 first = self.path[0]
                 context_value = context.get(first)
-                if not context_value:
+                if context_value is None:
                     return None
                 return self._apply_on_value(self.path[1:], context_value)
 

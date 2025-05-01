@@ -54,9 +54,10 @@ class TestSelector:
             ("$.req.foo", 42),
             ("$.foo", None),
             ("$.req.choochoo", None),
+            ("$.bool", False),
         ],
     )
     def test_lookup_context(self, expression: str, expected: Any):
         selector = Selector.parse(expression)
-        context = {"req": {"foo": 42, "bar": "zar"}, "other": 1337}
+        context = {"req": {"foo": 42, "bar": "zar"}, "other": 1337, "bool": False}
         assert selector.apply({}, context) == expected
