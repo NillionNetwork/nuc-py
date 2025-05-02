@@ -20,7 +20,9 @@ from nuc.policy import (
     Policy,
 )
 from nuc.selector import SelectorContext
-from nuc.token import DelegationBody, Did, InvocationBody, NucToken
+from nuc.token import Command, DelegationBody, Did, InvocationBody, NucToken
+
+_REVOCATION_COMMAND: Command = Command(["nuc", "revoke"])
 
 
 @dataclass
@@ -196,7 +198,8 @@ class NucTokenValidator:
             previous.subject == current.subject, ValidationKind.DIFFERENT_SUBJECTS
         )
         _validate(
-            current.command.is_attenuation_of(previous.command),
+            current.command.is_attenuation_of(previous.command)
+            or current.command == _REVOCATION_COMMAND,
             ValidationKind.COMMAND_NOT_ATTENUATED,
         )
         if previous.not_before and current.not_before:
