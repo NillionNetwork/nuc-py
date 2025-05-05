@@ -1,8 +1,10 @@
 from datetime import datetime, timezone
+import os
+import json
 import pytest
 import itertools
 from dataclasses import dataclass
-from typing import List
+from typing import Any, Dict, List
 
 from secp256k1 import PrivateKey
 
@@ -22,6 +24,77 @@ from nuc.validate import (
 
 ROOT_KEYS: List[PrivateKey] = [PrivateKey()]
 ROOT_DIDS: List[Did] = [Did(key.pubkey.serialize()) for key in ROOT_KEYS]  # type: ignore
+
+
+@dataclass
+class AssertionInput:
+    token: str
+    root_keys: List[Did]
+    current_time: datetime
+    context: Dict[str, Any]
+    parameters: ValidationParameters
+
+
+@dataclass
+class AssertionExpectation:
+    success: bool
+    error_message: str | None
+
+
+@dataclass
+class Assertion:
+    input: AssertionInput
+    expectation: AssertionExpectation
+
+
+def load_assertion(line: str) -> Assertion:
+    raw = json.loads(line)
+    raw_expectation = raw["expectation"]
+    if raw_expectation["result"] == "success":
+        expectation = AssertionExpectation(True, None)
+    else:
+        expectation = AssertionExpectation(False, raw_expectation["kind"])
+
+    raw_input = raw["input"]
+    token = raw_input["token"]
+    root_keys = [Did(bytes.fromhex(key)) for key in raw_input["root_keys"]]
+    current_time = datetime.fromtimestamp(raw_input["current_time"], timezone.utc)
+    context = raw_input["context"]
+
+    raw_parameters = raw_input["parameters"]
+    raw_requirements = raw_parameters["token_requirements"]
+    if raw_requirements == "none":
+        token_requirements = None
+    elif "invocation" in raw_requirements:
+        token_requirements = InvocationRequirement(
+            Did.parse(raw_requirements["invocation"])
+        )
+    elif "delegation" in raw_requirements:
+        token_requirements = DelegationRequirement(
+            Did.parse(raw_requirements["delegation"])
+        )
+    else:
+        raise Exception(f"invalid token requirements: {raw_requirements}")
+    parameters = ValidationParameters(
+        max_chain_length=raw_parameters["max_chain_length"],
+        max_policy_width=raw_parameters["max_policy_width"],
+        max_policy_depth=raw_parameters["max_policy_depth"],
+        token_requirements=token_requirements,
+    )
+
+    assertion_input = AssertionInput(
+        token, root_keys, current_time, context, parameters
+    )
+    return Assertion(assertion_input, expectation)
+
+
+def load_assertions() -> List[Assertion]:
+    tests_directory = os.path.dirname(os.path.realpath(__file__))
+    with open(os.path.join(tests_directory, "assertions.txt")) as fd:
+        assertions = []
+        for line in fd:
+            assertions.append(load_assertion(line))
+        return assertions
 
 
 @dataclass
@@ -572,6 +645,32 @@ class TestTokenValidator:
         asserter._context = {"req": {"bar": 1337}}
         asserter.assert_success(envelope)
 
+    def test_valid_revocation(self):
+        subject_key = PrivateKey()
+        subject = _did_from_private_key(subject_key)
+        rpc_did = Did(bytes([0xAA] * 33))
+        root = (
+            NucTokenBuilder.delegation([Policy.equals(".args.foo", 42)])
+            .subject(subject)
+            .command(Command(["nil"]))
+        )
+        invocation = (
+            NucTokenBuilder.invocation({"foo": 42, "bar": 1337})
+            .subject(subject)
+            .audience(rpc_did)
+            .command(Command(["nuc", "revoke"]))
+        )
+        envelope = Chainer().chain(
+            [
+                SignableNucTokenBuilder.issued_by_root(root),
+                SignableNucTokenBuilder(subject_key, invocation),
+            ]
+        )
+        parameters = ValidationParameters.default()
+        parameters.token_requirements = InvocationRequirement(rpc_did)
+        asserter = Asserter(parameters)
+        asserter.assert_success(envelope)
+
     def test_root_token(self):
         subject_key = PrivateKey()
         root = delegation(subject_key).command(Command(["nil"]))
@@ -594,3 +693,24 @@ class TestTokenValidator:
         asserter = Asserter()
         asserter._root_dids = []
         asserter.assert_success(envelope)
+
+    @pytest.mark.parametrize("assertion", load_assertions())
+    def test_predefined_input(self, assertion):
+        try:
+            validator = NucTokenValidator(assertion.input.root_keys)
+            validator._time_provider = lambda: assertion.input.current_time
+            envelope = NucTokenEnvelope.parse(assertion.input.token)
+            validator.validate(
+                envelope, assertion.input.context, assertion.input.parameters
+            )
+            if not assertion.expectation.success:
+                raise Exception(
+                    f"succeeded but expected failure: {assertion.expectation.error_message}"
+                )
+        except ValidationException as ex:
+            if assertion.expectation.success:
+                raise Exception(f"expected success but failed: {ex.kind.value}")
+            elif assertion.expectation.error_message != ex.kind.value:
+                raise Exception(
+                    f"failed with unexpected error: expected '{assertion.expectation.error_message}', got '{ex.kind.value}'"
+                )
