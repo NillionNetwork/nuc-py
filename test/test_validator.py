@@ -58,32 +58,40 @@ class Chainer:
 
 class Asserter:
     def __init__(
-        self, parameters: ValidationParameters = ValidationParameters.default()
+        self,
+        parameters: ValidationParameters = ValidationParameters.default(),
+        current_time: datetime | None = None,
     ) -> None:
         self._parameters = parameters
         self._root_dids = ROOT_DIDS
         self._context = {}
+        self._current_time = current_time
 
     def assert_failure(
         self, envelope: NucTokenEnvelope, expected_failure: ValidationKind
     ) -> None:
         self._log_tokens(envelope)
-        validator = NucTokenValidator(self._root_dids)
         try:
-            validator.validate(envelope, self._context, self._parameters)
+            self._validate(envelope)
             raise Exception("validation did not fail")
         except ValidationException as ex:
             assert ex.kind == expected_failure
 
     def assert_success(self, envelope: NucTokenEnvelope):
         self._log_tokens(envelope)
-        validator = NucTokenValidator(self._root_dids)
-        validator.validate(envelope, self._context, self._parameters)
+        self._validate(envelope)
 
     @staticmethod
     def _log_tokens(envelope: NucTokenEnvelope) -> None:
         print(f"token being asserted: {envelope.token.token.to_json()}")
         print(f"proofs for it: {[proof.token.to_json() for proof in envelope.proofs]}")
+
+    def _validate(self, envelope: NucTokenEnvelope):
+        self._log_tokens(envelope)
+        validator = NucTokenValidator(self._root_dids)
+        if self._current_time is not None:
+            validator._time_provider = lambda: self._current_time  # type: ignore
+        validator.validate(envelope, self._context, self._parameters)
 
 
 def _did_from_private_key(key: PrivateKey) -> Did:
@@ -340,9 +348,7 @@ class TestTokenValidator:
                 SignableNucTokenBuilder(key, last),
             ]
         )
-        parameters = ValidationParameters.default()
-        parameters.current_time = now
-        Asserter(parameters).assert_failure(
+        Asserter(current_time=now).assert_failure(
             envelope, ValidationKind.NOT_BEFORE_BACKWARDS
         )
 
@@ -358,9 +364,9 @@ class TestTokenValidator:
                 SignableNucTokenBuilder(key, last),
             ]
         )
-        parameters = ValidationParameters.default()
-        parameters.current_time = now
-        Asserter(parameters).assert_failure(envelope, ValidationKind.NOT_BEFORE_NOT_MET)
+        Asserter(current_time=now).assert_failure(
+            envelope, ValidationKind.NOT_BEFORE_NOT_MET
+        )
 
     def test_root_policy_not_met(self):
         key = PrivateKey()
@@ -508,9 +514,9 @@ class TestTokenValidator:
                 SignableNucTokenBuilder(key, last),
             ]
         )
-        parameters = ValidationParameters.default()
-        parameters.current_time = now
-        Asserter(parameters).assert_failure(envelope, ValidationKind.TOKEN_EXPIRED)
+        Asserter(current_time=now).assert_failure(
+            envelope, ValidationKind.TOKEN_EXPIRED
+        )
 
     def test_last_token_expired(self):
         now = datetime.fromtimestamp(10, timezone.utc)
@@ -525,9 +531,9 @@ class TestTokenValidator:
                 SignableNucTokenBuilder(key, last),
             ]
         )
-        parameters = ValidationParameters.default()
-        parameters.current_time = now
-        Asserter(parameters).assert_failure(envelope, ValidationKind.TOKEN_EXPIRED)
+        Asserter(current_time=now).assert_failure(
+            envelope, ValidationKind.TOKEN_EXPIRED
+        )
 
     def test_valid(self):
         subject_key = PrivateKey()
