@@ -3,6 +3,7 @@ nilauth client.
 """
 
 import logging
+from enum import StrEnum
 import hashlib
 from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass
@@ -24,6 +25,18 @@ logger = logging.getLogger(__name__)
 DEFAULT_REQUEST_TIMEOUT: float = 10
 PAYMENT_TX_RETRIES: List[int] = [1, 2, 3, 5, 10, 10, 10]
 TX_NOT_COMMITTED_ERROR_CODE: str = "TRANSACTION_NOT_COMMITTED"
+
+
+class BlindModule(StrEnum):
+    """
+    A Nillion blind module.
+    """
+
+    NILAI = "nilai"
+    """The nilai blind module"""
+
+    NILDB = "nildb"
+    """The nildb blind module"""
 
 
 @dataclass
@@ -120,15 +133,20 @@ class NilauthClient:
         self._base_url = base_url
         self._timeout_seconds = timeout_seconds
 
-    def request_token(self, key: PrivateKey) -> str:
+    def request_token(self, key: PrivateKey, blind_module: BlindModule) -> str:
         """
         Request a token, issued to the public key tied to the given private key.
+
+        Requesting tokens can only be done if a subscription has been paid for the blind module
+        ahead of time.
 
         Arguments
         ---------
 
         key
             The key for which the token should be issued to.
+        blind_module
+            The blind module to get a token for.
 
         .. note:: The private key is only used to sign a payload to prove ownership and is
             never transmitted anywhere.
@@ -140,6 +158,7 @@ class NilauthClient:
             "nonce": secrets.token_bytes(16).hex(),
             "target_public_key": public_key.serialize().hex(),
             "expires_at": int(expires_at.timestamp()),
+            "blind_module": str(blind_module),
         }
         request = self._create_signed_request(payload, key)
         response = self._post(
@@ -149,12 +168,10 @@ class NilauthClient:
         return response["token"]
 
     def pay_subscription(
-        self,
-        key: PrivateKey,
-        payer: Payer,
+        self, key: PrivateKey, payer: Payer, blind_module: BlindModule
     ) -> None:
         """
-        Pay for a subscription.
+        Pay for a subscription for a blind module.
 
         Arguments
         ---------
@@ -163,18 +180,21 @@ class NilauthClient:
             The key the subscription is for.
         payer
             The payer that will be used.
+        blind_module
+            The blind module that the subscription is for.
         """
-        subscription = self.subscription_status(key)
+        subscription = self.subscription_status(key, blind_module)
         if subscription.details and subscription.details.renewable_at > datetime.now(
             timezone.utc
         ):
             raise CannotRenewSubscription(subscription.details.renewable_at)
         public_key = self.about().public_key.serialize()
-        cost = self.subscription_cost()
+        cost = self.subscription_cost(blind_module)
         payload = json.dumps(
             {
                 "nonce": secrets.token_bytes(16).hex(),
                 "service_public_key": public_key.hex(),
+                "blind_module": str(blind_module),
             }
         ).encode("utf8")
         # Note: add proper value later on
@@ -189,10 +209,11 @@ class NilauthClient:
 
         for sleep_time in PAYMENT_TX_RETRIES:
             try:
-                return self._post(
+                self._post(
                     f"{self._base_url}/api/v1/payments/validate",
                     request,
                 )
+                return
             except RequestException as e:
                 if e.error_code == TX_NOT_COMMITTED_ERROR_CODE:
                     logger.warning(
@@ -204,29 +225,27 @@ class NilauthClient:
                     raise
         raise PaymentValidationException(tx_hash, payload)
 
-    def subscription_status(self, key: PrivateKey) -> Subscription:
+    def subscription_status(
+        self, key: PrivateKey, blind_module: BlindModule
+    ) -> Subscription:
         """
-        Get the status of a subscription.
+        Get the status of a subscription to a blind module.
 
         Arguments
         ---------
 
         key
             The key for which to get the subscription information.
+        blind_module
+            The blind module to get the subscription status for.
 
         .. note:: The private key is only used to sign a payload to prove ownership and is
             never transmitted anywhere.
         """
 
-        expires_at = datetime.now(timezone.utc) + timedelta(minutes=1)
-        payload = {
-            "nonce": secrets.token_bytes(16).hex(),
-            "expires_at": int(expires_at.timestamp()),
-        }
-        request = self._create_signed_request(payload, key)
-        response = self._post(
-            f"{self._base_url}/api/v1/subscriptions/status",
-            request,
+        public_key = key.pubkey.serialize().hex()  # type: ignore
+        response = self._get(
+            f"{self._base_url}/api/v1/subscriptions/status?public_key={public_key}&blind_module={str(blind_module)}"
         )
         subscribed = response["subscribed"]
         details = response["details"]
@@ -248,21 +267,33 @@ class NilauthClient:
         public_key = PublicKey(raw_public_key, raw=True)
         return NilauthAbout(public_key=public_key)
 
-    def subscription_cost(self) -> int:
+    def subscription_cost(self, blind_module: BlindModule) -> int:
         """
         Get the subscription cost in unils.
+
+        Arguments
+        ---------
+
+        blind_module
+            The blind module to get the subscription cost for.
         """
 
-        response = self._get(f"{self._base_url}/api/v1/payments/cost")
+        response = self._get(
+            f"{self._base_url}/api/v1/payments/cost?blind_module={str(blind_module)}"
+        )
         return response["cost_unils"]
 
-    def revoke_token(self, token: NucTokenEnvelope, key: PrivateKey) -> None:
+    def revoke_token(
+        self, auth_token: NucTokenEnvelope, token: NucTokenEnvelope, key: PrivateKey
+    ) -> None:
         """
         Revoke a token.
 
         Arguments
         ---------
 
+        auth_token
+            The token to be used as a base for authentication.
         token
             The token to be revoked.
         key
@@ -270,8 +301,6 @@ class NilauthClient:
         """
         about = self.about()
         serialized_token = token.serialize()
-        auth_token = self.request_token(key)
-        auth_token = NucTokenEnvelope.parse(auth_token)
         auth_token.validate_signatures()
         args = {"token": serialized_token}
         invocation = (
