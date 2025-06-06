@@ -168,7 +168,7 @@ class NilauthClient:
         return response["token"]
 
     def pay_subscription(
-        self, key: PrivateKey, payer: Payer, blind_module: BlindModule
+        self, pubkey: PublicKey, payer: Payer, blind_module: BlindModule
     ) -> None:
         """
         Pay for a subscription for a blind module.
@@ -176,14 +176,14 @@ class NilauthClient:
         Arguments
         ---------
 
-        key
-            The key the subscription is for.
+        pubkey
+            The public key the subscription is for.
         payer
             The payer that will be used.
         blind_module
             The blind module that the subscription is for.
         """
-        subscription = self.subscription_status(key, blind_module)
+        subscription = self.subscription_status(pubkey, blind_module)
         if subscription.details and subscription.details.renewable_at > datetime.now(
             timezone.utc
         ):
@@ -204,7 +204,7 @@ class NilauthClient:
         request = {
             "tx_hash": tx_hash,
             "payload": payload.hex(),
-            "public_key": key.pubkey.serialize().hex(),  # type: ignore
+            "public_key": pubkey.serialize().hex(),
         }
 
         for sleep_time in PAYMENT_TX_RETRIES:
@@ -226,7 +226,7 @@ class NilauthClient:
         raise PaymentValidationException(tx_hash, payload)
 
     def subscription_status(
-        self, key: PrivateKey, blind_module: BlindModule
+        self, pubkey: PublicKey, blind_module: BlindModule
     ) -> Subscription:
         """
         Get the status of a subscription to a blind module.
@@ -234,8 +234,8 @@ class NilauthClient:
         Arguments
         ---------
 
-        key
-            The key for which to get the subscription information.
+        pubkey
+            The public key for which to get the subscription information.
         blind_module
             The blind module to get the subscription status for.
 
@@ -243,7 +243,7 @@ class NilauthClient:
             never transmitted anywhere.
         """
 
-        public_key = key.pubkey.serialize().hex()  # type: ignore
+        public_key = pubkey.serialize().hex()
         response = self._get(
             f"{self._base_url}/api/v1/subscriptions/status?public_key={public_key}&blind_module={str(blind_module)}"
         )
