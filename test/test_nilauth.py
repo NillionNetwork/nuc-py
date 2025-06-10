@@ -2,7 +2,7 @@ from unittest.mock import patch
 from secp256k1 import PrivateKey, PublicKey
 
 from nuc.builder import NucTokenBuilder
-from nuc.nilauth import NilauthClient
+from nuc.nilauth import BlindModule, NilauthClient
 from nuc.policy import Policy
 from nuc.token import Command, Did
 
@@ -32,7 +32,8 @@ class TestNilauthClient:
         mock_post.return_value.status_code = 200
 
         key = PrivateKey()
-        token = client.request_token(key)
+        module = BlindModule.NILAI
+        token = client.request_token(key, module)
         assert token == response_token
 
         invocation = mock_post.call_args_list[0]
