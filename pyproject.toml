@@ -1,6 +1,6 @@
 [project]
 name = "nuc"
-version = "0.0.0a0"
+version = "0.1.0rc1"
 description = """\
     Data structures and functionalities for the Nillion \
     Network user identity and authorization framework.\
