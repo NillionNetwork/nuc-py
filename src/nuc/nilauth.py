@@ -333,7 +333,13 @@ class NilauthClient:
             f"{self._base_url}/api/v1/revocations/lookup",
             request,
         )
-        return [RevokedToken(**t) for t in response["revoked"]]
+        return [
+            RevokedToken(
+                token_hash=t["token_hash"],
+                revoked_at=datetime.fromtimestamp(t["revoked_at"], timezone.utc),
+            )
+            for t in response["revoked"]
+        ]
 
     def _get(self, url: str, **kwargs) -> Any:
         response = requests.get(url, timeout=self._timeout_seconds, **kwargs)
