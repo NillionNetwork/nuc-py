@@ -197,10 +197,15 @@ class NilauthClient:
                 "blind_module": str(blind_module),
             }
         ).encode("utf8")
-        # Note: add proper value later on
-        tx_hash = payer.pay(hashlib.sha256(payload).digest(), amount_unil=cost)
-        logger.info("Submitting payment to nilauth with tx hash %s", tx_hash)
+        digest = hashlib.sha256(payload).digest()
+        logger.info(
+            "Making nilchain payment with payload=%s, digest=%s",
+            payload.hex(),
+            digest.hex(),
+        )
+        tx_hash = payer.pay(digest, amount_unil=cost)
 
+        logger.info("Submitting payment to nilauth with tx hash %s", tx_hash)
         request = {
             "tx_hash": tx_hash,
             "payload": payload.hex(),
