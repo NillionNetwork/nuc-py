@@ -1,6 +1,6 @@
 [project]
 name = "nuc"
-version = "0.1.0"
+version = "0.2.0"
 description = """\
     Data structures and functionalities for the Nillion \
     Network user identity and authorization framework.\
@@ -20,10 +20,10 @@ Documentation = "https://nuc.readthedocs.io"
 
 [project.optional-dependencies]
 docs = [
-    "myst-parser==2.0.0",
     "toml~=0.10.2",
     "sphinx~=7.1",
-    "sphinx-rtd-theme~=2.0.0"
+    "sphinx-rtd-theme~=2.0.0",
+    "myst-parser==2.0.0"
 ]
 test = [
     "pytest~=8.2",
