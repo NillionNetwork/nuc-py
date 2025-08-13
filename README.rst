@@ -71,12 +71,13 @@ The subset of the unit tests included in the module itself and can be executed u
 
     python src/nuc/nuc.py -v
 
-Style conventions are enforced using `Pylint <https://pylint.readthedocs.io>`__:
+Style and formatting conventions are enforced using `Pylint <https://pylint.readthedocs.io>`__ and `Ruff <https://docs.astral.sh/ruff/>`__:
 
 .. code-block:: bash
 
     uv sync --extra lint
     uv run pylint src/nuc test/test_nuc.py
+    uv run ruff format --check
 
 Type checking is enforced using `Pyright <https://github.com/microsoft/pyright>`__:
 
