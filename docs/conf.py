@@ -69,7 +69,17 @@ autodoc_member_order = "bysource"
 autodoc_default_options = {
     "special-members": True,
     "exclude-members": ",".join(
-        ["__annotations__", "__weakref__", "__module__", "__hash__", "__dict__"]
+        [
+            "__annotations__",
+            "__weakref__",
+            "__module__",
+            "__hash__",
+            "__dict__",
+            "__dataclass_fields__",
+            "__dataclass_params__",
+            "__match_args__",
+            "__init__",
+        ]
     ),
 }
 autodoc_preserve_defaults = True
