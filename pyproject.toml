@@ -1,6 +1,6 @@
 [project]
 name = "nuc"
-version = "0.2.0"
+version = "0.3.0"
 description = """\
     Data structures and functionalities for the Nillion \
     Network user identity and authorization framework.\
@@ -21,17 +21,17 @@ Documentation = "https://nuc.readthedocs.io"
 [project.optional-dependencies]
 docs = [
     "toml~=0.10.2",
-    "sphinx~=7.1",
-    "sphinx-rtd-theme~=2.0.0",
+    "sphinx~=8.0",
+    "sphinx-rtd-theme~=3.0",
     "myst-parser==2.0.0"
 ]
 test = [
-    "pytest~=8.2",
-    "pytest-cov~=5.0"
+    "pytest~=8.4",
+    "pytest-cov~=7.0"
 ]
 lint = [
     "ruff==0.7.0", 
-    "pylint~=3.2.0",
+    "pylint~=3.3.0",
     "pyright==1.1.396",
 ]
 coveralls = [
@@ -44,7 +44,7 @@ publish = [
 
 [build-system]
 requires = [
-    "setuptools>=68.0"
+    "setuptools>=77.0"
 ]
 build-backend = "setuptools.build_meta"
 
